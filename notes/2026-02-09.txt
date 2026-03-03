@@ -21,7 +21,7 @@ Attendees:
 
 4) Action Items
 - Action: Fill out project requirements, suggest further improvements | Owner: Everyone | Due: February 16
-
+Sarah: Research design, Brainstorm the parking app features, look for sources for datasets and examples
 
 5) Plans / Goals for Next Meeting
 - Finish building our requirements
