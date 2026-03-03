@@ -23,6 +23,7 @@ Attendees:
 
 4) Action Items
 - Action: Start setting up tech stack in GitHub | Owner: Everyone | Due: Mar 2
+Sarah: Work on project requirements, literature search, and Figma UI wireframes
 
 5) Plans / Goals for Next Meeting
 - Finalize requirements and get started with project foundations
