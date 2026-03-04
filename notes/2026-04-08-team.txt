@@ -1,0 +1,34 @@
+Meeting Type: Team-Only
+Date: 2026-04-08
+Start–End Time: 9:00pm 9:45pm
+Location/Mode: Zoom
+Attendees:
+- Reza Aghayari
+- Sarah Liang
+- Ripandeep Singh
+- Quan David Mai
+
+1) Accomplished Since Last Meeting
+- Add features to homepage
+- Added chat box features, LLM
+- Add find parking map feature
+- Added API endpoints
+- Database is setup and ready in github
+- Initial AI training completed
+
+2) Accomplished During This Meeting
+- Finished the workbook and diagrams
+- Finalized requirements
+- Discussed tasks moving forwards
+
+3) Issues / Blockers
+- API endpoints should be set up
+
+4) Action Items
+- Action: Tests for backend and see how to add information to database | Owner: Reza Aghayari | Due: Apr 15
+- Action: Continue adding to maps and homescreen | Owner: Sarah Liang | Due: Apr 30
+- Action: Add authentication and connect to frontend. Add to database | Owner: Ripandeep Singh | Due: Apr 15
+- Action: Hypertuning the Parking Detection model | Owner: Quan David Mai | Due: Apr 15
+
+5) Plans / Goals for Next Meeting
+- Meet with advisor
