@@ -1,0 +1,33 @@
+Meeting Type: Team-Only
+Date: 2026-03-02
+Start–End Time: 7:00pm 7:45pm
+Location/Mode: Zoom
+Attendees:
+- Reza Aghayari
+- Sarah Liang
+- Ripandeep Singh
+- Quan David Mai
+
+1) Accomplished Since Last Meeting
+- Narrowed down to two AI models for potential use.
+- Found live camera feeds for project testing.
+- Identified relevant datasets for training/testing.
+
+2) Accomplished During This Meeting
+- Discussed backend and frontend architecture ideas.
+- Reviewed progress on requirements and data collection.
+- Confirmed need to wait for advisor input before major design decisions.
+
+3) Issues / Blockers
+- Waiting for advisor guidance on final architecture and AI model selection.
+- Need more live cam footage with clear parking space angles
+
+4) Action Items
+- Action: Collect more details on live camera feeds and access requirements | Owner: Reza Aghayari | Due: Mar 9
+- Action: Refine narrowed AI models and list pros/cons for each | Owner: Sarah Liang | Due: Mar 9
+- Action: Organize backend and frontend structure in GitHub (folders, README, initial setup) | Owner: Ripandeep Singh | Due: Mar 9
+- Action: Collect and clean datasets for AI training/testing | Owner: Quan David Mai | Due: Mar 9
+
+5) Plans / Goals for Next Meeting
+- Prepare a summary of AI model options and dataset readiness.
+- Draft a preliminary system architecture plan (backend/frontend) for advisor review.

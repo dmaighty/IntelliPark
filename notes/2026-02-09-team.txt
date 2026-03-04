@@ -1,0 +1,32 @@
+Meeting Type: Team-Only
+Date: 2025-02-09
+Start–End Time: 2pm - 2:45pm
+Location/Mode: Zoom
+Attendees:
+- Reza Aghayari
+- Sarah Liang
+- Ripandeep Singh
+- Quan David Mai
+
+1) Accomplished Since Last Meeting
+- First official team meeting (project kickoff).
+- Introduced team members and briefly discussed initial project idea and expectations.
+
+2) Accomplished During This Meeting
+- Create a shared google drive
+- Create a shared GitHub
+
+
+3) Issues / Blockers
+- We need to finalize general requirements before starting project
+- Plan regularly meetings with advisor and team
+
+4) Action Items
+- Action: Research and draft functional requirements | Owner: Reza Aghayari | Due: February 16
+- Action: Research and draft non-functional requirements | Owner: Sarah Liang | Due: February 16
+- Action: Research project constraints and technical requirements | Owner: Ripandeep Singh | Due: February 16
+- Action: Review course project guidelines and compile deliverables | Owner: Quan David Mai | Due: February 16
+
+5) Plans / Goals for Next Meeting
+- Finish building our requirements
+- Plan official meeting times

@@ -1,0 +1,32 @@
+Meeting Type: Team-Only
+Date: 2026-02-16
+Start–End Time: 7:00pm - 7:45pm
+Location/Mode: Zoom
+
+Attendees:
+- Reza Aghayari
+- Sarah Liang
+- Ripandeep Singh
+- Quan David Mai
+
+1) Accomplished Since Last Meeting
+- Added everyone to shared google drive and github
+- Started drafting project requirements
+
+2) Accomplished During This Meeting
+- Reviewed requirements list to narrow down and finalize scope.
+- Call advisor to set up regular meetings
+
+3) Issues / Blockers
+- Need advice before starting major architecture designs
+
+4) Action Items
+Action: Continue researching additional project requirements and potential improvements | Owner: Reza Aghayari | Due: Feb 23
+Action: Narrow down AI model options and document key features | Owner: Sarah Liang | Due: Feb 23
+Action: Set up basic GitHub repo structure and folders | Owner: Ripandeep Singh | Due: Feb 23
+Action: Explore datasets and prepare initial sample data for testing | Owner: Quan David Mai | Due: Feb 23
+
+
+5) Plans / Goals for Next Meeting
+- Finalize requirements and get started with project foundations
+- Begin working on project foundations and initial architecture.

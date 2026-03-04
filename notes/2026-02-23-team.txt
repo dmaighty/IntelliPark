@@ -1,0 +1,31 @@
+Meeting Type: Team-Only
+Date: 2026-02-23
+Start–End Time: 7pm - 7:30pm
+Location/Mode: Zoom
+
+Attendees:
+- Reza Aghayari
+- Sarah Liang
+- Ripandeep Singh
+- Quan David Mai
+
+1) Accomplished Since Last Meeting
+- Reviewed action items from Feb 16 meeting.
+- Began preliminary research on project requirements and AI model options.
+
+2) Accomplished During This Meeting
+- Discussed possible AI models for the project.
+- Looked for publicly available datasets and live camera feeds.
+- Started outlining backend and frontend tasks at a high level.
+
+3) Issues / Blockers
+- Still waiting for advisor input on major design choices.
+
+4) Action Items
+- Action: Look for additional project requirements to expand scope | Owner: Reza Aghayari | Due: Mar 2
+- Action: Remove or simplify unnecessary requirements from draft | Owner: Sarah Liang | Due: Mar 2
+- Action: Organize Google Drive and set up project folders for collaboration | Owner: Ripandeep Singh | Due: Mar 2
+- Action: Research suitable AI models for project use | Owner: Quan David Mai | Due: Mar 2
+
+5) Plans / Goals for Next Meeting
+- Prepare materials to discuss with advisor once available.
