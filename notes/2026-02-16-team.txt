@@ -22,7 +22,7 @@ Attendees:
 
 4) Action Items
 Action: Continue researching additional project requirements and potential improvements | Owner: Reza Aghayari | Due: Feb 23
-Action: Narrow down AI model options and document key features | Owner: Sarah Liang | Due: Feb 23
+Action: Remove or simplify unnecessary requirements from draft | Owner: Sarah Liang | Due: Feb 23
 Action: Set up basic GitHub repo structure and folders | Owner: Ripandeep Singh | Due: Feb 23
 Action: Explore datasets and prepare initial sample data for testing | Owner: Quan David Mai | Due: Feb 23
 

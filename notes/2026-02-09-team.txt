@@ -23,7 +23,7 @@ Attendees:
 
 4) Action Items
 - Action: Research and draft functional requirements | Owner: Reza Aghayari | Due: February 16
-- Action: Research and draft non-functional requirements | Owner: Sarah Liang | Due: February 16
+- Action:  Research design, Brainstorm the parking app features, look for sources for datasets and examples | Owner: Sarah Liang | Due: February 16
 - Action: Research project constraints and technical requirements | Owner: Ripandeep Singh | Due: February 16
 - Action: Review course project guidelines and compile deliverables | Owner: Quan David Mai | Due: February 16
 

@@ -23,7 +23,7 @@ Attendees:
 
 4) Action Items
 - Action: Look for additional project requirements to expand scope | Owner: Reza Aghayari | Due: Mar 2
-- Action: Remove or simplify unnecessary requirements from draft | Owner: Sarah Liang | Due: Mar 2
+- Action: Work on project requirements, literature search, and Figma UI wireframes | Owner: Sarah Liang | Due: Mar 2
 - Action: Organize Google Drive and set up project folders for collaboration | Owner: Ripandeep Singh | Due: Mar 2
 - Action: Research suitable AI models for project use | Owner: Quan David Mai | Due: Mar 2
 
