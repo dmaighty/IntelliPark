@@ -1,0 +1,32 @@
+Meeting Type: Team-Only
+Date: 2026-03-11
+Start–End Time: 7:00pm 7:45pm
+Location/Mode: Zoom
+Attendees:
+- Reza Aghayari
+- Sarah Liang
+- Ripandeep Singh
+- Quan David Mai
+
+1) Accomplished Since Last Meeting
+- Created a basic architecture structure for frontend and backend
+- Finalize all development tools to get started
+- Identified initial components needed for frontend, backend, and AI pipeline
+
+2) Accomplished During This Meeting
+- Decide next major tasks everyone wants to work on
+- Discussed basic workflow for integrating AI model with backend and frontend
+
+3) Issues / Blockers
+- We need to have a bare bone front end and backend before we get into heavy coding and tasks. 
+- Some components depend on initial database and dataset setup
+
+4) Action Items
+- Action: Start database | Owner: Reza Aghayari | Due: Mar 18
+- Action: Start UI wireframe | Owner: Sarah Liang | Due: Mar 18
+- Action: Set up React Native Project and barebone backend | Owner: Ripandeep Singh | Due: Mar 18
+- Action: Set up model dataset | Owner: Quan David Mai | Due: Mar 18
+
+5) Plans / Goals for Next Meeting
+- Review initial progress on database, UI wireframe, backend setup, and dataset preparation
+- Have some basic structures ready
