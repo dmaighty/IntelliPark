@@ -14,3 +14,57 @@ Quan David Mai (quan.mai@sjsu.edu)
 This folder contains all technical documents and system diagrams for the SmartPark project.
 
 [https://drive.google.com/drive/u/1/folders/1vGqu0myTUq3g5fES4r__yZVMtbU_AJmL](https://drive.google.com/drive/u/1/folders/1vGqu0myTUq3g5fES4r__yZVMtbU_AJmL))
+
+
+# IntelliPark - Install and Run
+
+## Backend (Python FastAPI)
+
+1. cd Backend
+
+2. Creat virtual env if you want
+```bash
+python -m venv venv
+source venv/bin/activate
+```
+
+3. pip install -r requirements.txt
+
+```bash
+pip install -r requirements.txt
+```
+
+4. uvicorn app.main:app --reload
+
+```bash
+uvicorn app.main:app --reload
+```
+
+API runs at http://localhost:8000
+
+
+## Frontend (React Native Expo)
+
+1. cd Frontend
+
+```bash
+cd Frontend
+```
+
+2. npm install
+
+```bash
+npm install
+```
+
+3. npm start
+
+```bash
+npm start
+```
+
+You can start ios emulator on ur mac by pressing `i` which will run ur app.
+
+or download the Expo app which will run SmartPark on ur phone locally by scanning the barcode.
+
+look at Expo docs for more information.
