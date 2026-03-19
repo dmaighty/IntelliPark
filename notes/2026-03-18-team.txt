@@ -1,0 +1,30 @@
+Meeting Type: Team-Only
+Date: 2026-03-18
+Start–End Time: 10:00pm 10:45pm
+Location/Mode: Zoom
+Attendees:
+- Reza Aghayari
+- Sarah Liang
+- Ripandeep Singh
+- Quan David Mai
+
+1) Accomplished Since Last Meeting
+- Set up a barebone backend and frontend
+- Set up model training dataset
+
+2) Accomplished During This Meeting
+- Assign next tasks for everyone
+- Follow up with professor
+
+3) Issues / Blockers
+- Hoping to see professor soon
+
+4) Action Items
+- Action: Design and implement PostgreSQL database schema (tables for users, parking lots, and related data) and set up migrations | Owner: Reza Aghayari | Due: Mar 25
+- Action: Build frontend pages (homepage and sign-in) and begin UX/UI improvements | Owner: Sarah Liang | Due: Mar 25
+- Action: Develop backend API endpoints (user authentication, parking lot data handling) and integrate with database | Owner: Ripandeep Singh | Due: Mar 25
+- Action: Continue model training, refine dataset, and evaluate initial model performance | Owner: Quan David Mai | Due: Mar 25
+
+5) Plans / Goals for Next Meeting
+- Try to connect our next assigned parts. 
+- Connect database using the migration end

@@ -22,7 +22,7 @@ This folder contains all technical documents and system diagrams for the SmartPa
 
 1. cd Backend
 
-2. Creat virtual env if you want
+2. Creat virtual env if you want (for git: source venv/Scripts/activate)
 ```bash
 python -m venv venv
 source venv/bin/activate
@@ -68,3 +68,13 @@ You can start ios emulator on ur mac by pressing `i` which will run ur app.
 or download the Expo app which will run SmartPark on ur phone locally by scanning the barcode.
 
 look at Expo docs for more information.
+
+
+
+# Parking Detection Model (Jupyter Notebook)
+
+This notebook contains the development, training, and evaluation of our parking space detection model, including dataset preprocessing, model architecture, and performance metrics.
+
+[View Parking Detection Notebook](https://colab.research.google.com/drive/1k_aHyPhQQfMorV0jAzepQrlmu0oekT_s?usp=drive_link)
+
+> Note: Need access to the shared google drive
