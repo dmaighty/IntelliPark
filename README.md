@@ -43,31 +43,122 @@ uvicorn app.main:app --reload
 API runs at http://localhost:8000
 
 
-## Frontend (React Native Expo)
+===============================
+# IntelliPark Database Setup Guide
+===============================
 
-1. cd Frontend
+This project uses PostgreSQL with SQLAlchemy and Alembic for database management.
 
-```bash
-cd Frontend
-```
+Follow the steps below to set up the database locally and run migrations.
 
-2. npm install
+--------------------------------
+1. Install Dependencies
+--------------------------------
 
-```bash
-npm install
-```
+Make sure you are inside the project root directory, then run:
 
-3. npm start
+pip install -r requirements.txt
 
-```bash
-npm start
-```
 
-You can start ios emulator on ur mac by pressing `i` which will run ur app.
+--------------------------------
+2. Create PostgreSQL Database
+--------------------------------
 
-or download the Expo app which will run SmartPark on ur phone locally by scanning the barcode.
+Using pgAdmin or terminal, create a database:
 
-look at Expo docs for more information.
+CREATE DATABASE intellipark_db;
+
+
+--------------------------------
+3. Create .env File
+--------------------------------
+
+In the root directory of the project, create a file named:
+
+.env
+
+Add the following line:
+
+DATABASE_URL=postgresql+psycopg2://postgres:PASSWORD@localhost:5432/intellipark_db
+
+Replace PASSWORD with your PostgreSQL password.
+
+
+--------------------------------
+4. Run Database Migrations
+--------------------------------
+
+Run the following command:
+
+alembic upgrade head
+
+This will automatically create all required tables.
+
+
+--------------------------------
+5. Verify Tables
+--------------------------------
+
+Open pgAdmin and navigate to:
+
+Databases → intellipark_db → Schemas → public → Tables
+
+You should see:
+
+- users
+- drivers
+- admins
+- parking_lots
+- parking_levels
+- parking_spots
+- vehicles
+- reservations
+- parking_sessions
+- payments
+- alembic_version
+
+
+--------------------------------
+6. Important Notes
+--------------------------------
+
+- Do NOT create tables manually in pgAdmin
+- Always use Alembic for schema changes
+- Do NOT commit .env file to GitHub
+- Make sure PostgreSQL is running before migrations
+
+
+--------------------------------
+7. Updating Database Schema
+--------------------------------
+
+If you modify models, run:
+
+alembic revision --autogenerate -m "describe your change"
+alembic upgrade head
+
+
+--------------------------------
+8. Test Database Connection
+--------------------------------
+
+You can test the connection using this Python script:
+
+from sqlalchemy import create_engine, text
+from app.config import DATABASE_URL
+
+engine = create_engine(DATABASE_URL)
+
+with engine.connect() as conn:
+    result = conn.execute(text("SELECT 1"))
+    print("Database connection works:", result.scalar())
+
+
+--------------------------------
+End of Setup Guide
+--------------------------------
+
+
 
 
 
