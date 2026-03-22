@@ -15,7 +15,8 @@ Frontend (React Native Expo)
 
 1. cd Frontend
 2. npm install
-3. npm start
+3. npx expo install expo-image-picker
+4. npm start
 
 You can start ios emulator on ur mac by pressing i which will run ur app.
 or download the Expo app which will run SmartPark on ur phone locally by scanning the barcode.

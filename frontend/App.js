@@ -4,6 +4,8 @@ import WelcomeScreen from './screens/WelcomeScreen';
 import SignInScreen from './screens/SignInScreen';
 import PasswordScreen from './screens/PasswordScreen';
 import RegisterScreen from './screens/RegisterScreen';
+import HomeScreen from './screens/HomeScreen';
+import ProfileScreen from './screens/ProfileScreen';
 
 export default function App() {
   const [screen, setScreen] = useState('welcome');
@@ -33,6 +35,7 @@ export default function App() {
         <PasswordScreen
           identifier={identifier}
           onBack={() => setScreen('signin')}
+          onSignIn={() => setScreen('home')}
         />
       )}
 
@@ -40,9 +43,18 @@ export default function App() {
         <RegisterScreen
           onBack={() => setScreen('welcome')}
           onSignIn={() => setScreen('signin')}
-          onRegister={(formData) => {
-            console.log('Register form:', formData);
-          }}
+          onRegister={() => setScreen('home')}
+        />
+      )}
+
+      {screen === 'home' && (
+        <HomeScreen onProfilePress={() => setScreen('profile')} />
+      )}
+
+      {screen === 'profile' && (
+        <ProfileScreen
+          onBack={() => setScreen('home')}
+          onSignOut={() => setScreen('welcome')}
         />
       )}
 

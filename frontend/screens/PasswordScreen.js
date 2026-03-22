@@ -60,10 +60,7 @@ export default function PasswordScreen({ identifier, onBack, onSignIn }) {
           />
         </View>
 
-        <TouchableOpacity
-          style={styles.button}
-          onPress={() => onSignIn && onSignIn(password)}
-        >
+        <TouchableOpacity style={styles.button} onPress={onSignIn}>
           <Text style={styles.buttonText}>Sign In</Text>
         </TouchableOpacity>
 
