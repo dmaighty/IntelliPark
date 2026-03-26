@@ -95,8 +95,28 @@ alembic upgrade head
 This will automatically create all required tables.
 
 
+------------------------------------
+5. Database Tables:
+-------------------------------------
+Database Tables: 
+
+users
+drivers
+admins
+parking locations
+parking levels
+parking spots
+vehicles
+parking sessions or reservations
+payments
+occupancy detections
+predictions / forecasts
+
+ 
+
+
 --------------------------------
-5. Verify Tables
+6. Verify Tables
 --------------------------------
 
 Open pgAdmin and navigate to:
@@ -119,7 +139,7 @@ You should see:
 
 
 --------------------------------
-6. Important Notes
+7. Important Notes
 --------------------------------
 
 - Do NOT create tables manually in pgAdmin
@@ -129,7 +149,7 @@ You should see:
 
 
 --------------------------------
-7. Updating Database Schema
+8. Updating Database Schema
 --------------------------------
 
 If you modify models, run:
@@ -139,7 +159,7 @@ alembic upgrade head
 
 
 --------------------------------
-8. Test Database Connection
+9. Test Database Connection
 --------------------------------
 
 You can test the connection using this Python script:
