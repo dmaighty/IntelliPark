@@ -1,0 +1,152 @@
+========================================
+IntelliPark - Database Migration Guide
+========================================
+
+This project uses PostgreSQL with SQLAlchemy and Alembic for database migrations.
+
+----------------------------------------
+1. Prerequisites
+----------------------------------------
+
+Make sure you have:
+
+- Python installed (3.9+)
+- PostgreSQL installed and running
+- pgAdmin (optional)
+- Project cloned from GitHub
+
+----------------------------------------
+2. Setup Virtual Environment
+----------------------------------------
+
+cd IntelliPark
+
+python3 -m venv venv
+source venv/bin/activate
+
+----------------------------------------
+3. Install Dependencies
+----------------------------------------
+
+pip install -r requirements.txt
+
+----------------------------------------
+4. Create PostgreSQL Database
+----------------------------------------
+
+Using pgAdmin or terminal:
+
+CREATE DATABASE intellipark_db;
+
+----------------------------------------
+5. Configure Database Connection
+----------------------------------------
+
+Create a file in the project root:
+
+.env
+
+Add:
+
+DATABASE_URL=postgresql+psycopg2://postgres:PASSWORD@localhost:5432/intellipark_db
+
+Replace PASSWORD with your PostgreSQL password.
+
+----------------------------------------
+6. Run Database Migrations
+----------------------------------------
+
+Run:
+
+alembic upgrade head
+
+This will:
+- create all tables
+- apply latest schema
+- update alembic_version
+
+----------------------------------------
+7. Verify Database
+----------------------------------------
+
+Open pgAdmin and check:
+
+intellipark_db → Schemas → public → Tables
+
+Expected tables:
+
+- users
+- drivers
+- admins
+- parking_lots
+- parking_levels
+- parking_spots
+- vehicles
+- reservations
+- parking_sessions
+- payments
+
+----------------------------------------
+8. Creating a New Migration
+----------------------------------------
+
+When you change database models:
+
+Step 1: Update model files (app/db/models)
+
+Step 2: Generate migration:
+
+alembic revision --autogenerate -m "describe your change"
+
+Step 3: Apply migration:
+
+alembic upgrade head
+
+----------------------------------------
+9. Check Migration Status
+----------------------------------------
+
+See current version:
+
+alembic current
+
+See history:
+
+alembic history
+
+----------------------------------------
+10. Important Rules
+----------------------------------------
+
+- DO NOT create tables manually in pgAdmin
+- ALWAYS use Alembic migrations
+- DO NOT modify database directly
+- DO NOT commit .env file
+- ALWAYS pull latest migrations before running backend
+
+----------------------------------------
+11. Reset Database (optional)
+----------------------------------------
+
+If needed:
+
+DROP DATABASE intellipark_db;
+CREATE DATABASE intellipark_db;
+
+Then run:
+
+alembic upgrade head
+
+----------------------------------------
+12. Test Database Connection
+----------------------------------------
+
+python test_db.py
+
+Expected output:
+
+Database connection works: 1
+
+----------------------------------------
+End of Guide
+----------------------------------------
