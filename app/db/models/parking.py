@@ -12,7 +12,6 @@ class ParkingLot(Base):
     lot_type: Mapped[str] = mapped_column(String(20), nullable=False)  # open_lot / garage
     address: Mapped[str] = mapped_column(String(255), nullable=False)
     latitude: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
-    latitude: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     total_spaces: Mapped[int] = mapped_column(Integer, nullable=False)
 
     levels = relationship("ParkingLevel", back_populates="parking_lot")

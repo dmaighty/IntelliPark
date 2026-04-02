@@ -1,11 +1,11 @@
+import app.db.models  # noqa: F401
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
-from app.config.settings import Settings
+from sqlalchemy.orm import sessionmaker
 
-settings = Settings()
+from app.config.settings import settings
+
 engine = create_engine(settings.database_url)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
 
 
 def get_db():
