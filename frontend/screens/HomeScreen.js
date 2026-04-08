@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   SafeAreaView,
   View,
@@ -8,14 +8,23 @@ import {
   TouchableOpacity,
   Animated,
   Dimensions,
+  TextInput,
+  Keyboard,
+  Platform,
 } from 'react-native';
+import MapView, { Marker } from 'react-native-maps';
+import * as Location from 'expo-location';
+import { globalStyles, spacing, radius, shadow } from '../styles/global';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
-const SIDE_PADDING = 24;
-const CARD_GAP = 16;
 const CARD_WIDTH = width - 64;
-const SNAP_INTERVAL = CARD_WIDTH + CARD_GAP;
+const SNAP_INTERVAL = CARD_WIDTH + spacing.cardGap;
+
+const DEFAULT_COORDS = {
+  latitude: 37.3352,
+  longitude: -121.8811,
+};
 
 const cars = [
   {
@@ -38,17 +47,126 @@ const cars = [
   },
 ];
 
-const garages = [
-  { id: 1, name: 'North Garage', spots: '24 spots open' },
-  { id: 2, name: 'South Garage', spots: '12 spots open' },
-  { id: 3, name: 'West Lot', spots: '7 spots open' },
-];
-
-export default function HomeScreen({ onProfilePress }) {
+export default function HomeScreen({
+  onProfilePress,
+  onFindPress,
+  onChatPress,
+  tabBarHeight = 100,
+}) {
   const scrollX = useRef(new Animated.Value(0)).current;
   const scrollViewRef = useRef(null);
+  const mapRef = useRef(null);
+  const sheetAnim = useRef(new Animated.Value(0)).current;
+
+  const [userLocation, setUserLocation] = useState(DEFAULT_COORDS);
+  const [carLocation, setCarLocation] = useState({
+    latitude: DEFAULT_COORDS.latitude + 0.0007,
+    longitude: DEFAULT_COORDS.longitude - 0.0005,
+  });
+
+  const [mapRegion, setMapRegion] = useState({
+    latitude: DEFAULT_COORDS.latitude,
+    longitude: DEFAULT_COORDS.longitude,
+    latitudeDelta: 0.01,
+    longitudeDelta: 0.01,
+  });
+
+  const [message, setMessage] = useState('');
 
   const carData = [...cars.slice(0, 7), { id: 'add', isAddCard: true }];
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadLocation = async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+
+      if (status !== 'granted') {
+        if (!mounted) return;
+        setUserLocation(DEFAULT_COORDS);
+        return;
+      }
+
+      const location = await Location.getCurrentPositionAsync({});
+      if (!mounted) return;
+
+      const coords = {
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      };
+
+      const nextCarLocation = {
+        latitude: coords.latitude + 0.0007,
+        longitude: coords.longitude - 0.0005,
+      };
+
+      setUserLocation(coords);
+      setCarLocation(nextCarLocation);
+
+      const nextRegion = {
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      };
+
+      setMapRegion(nextRegion);
+
+      if (mapRef.current) {
+        mapRef.current.fitToCoordinates([coords, nextCarLocation], {
+          edgePadding: { top: 80, right: 80, bottom: 160, left: 80 },
+          animated: true,
+        });
+      }
+    };
+
+    loadLocation();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const keyboardShow = Keyboard.addListener(showEvent, () => {
+      Animated.timing(sheetAnim, {
+        toValue: 1,
+        duration: 220,
+        useNativeDriver: false,
+      }).start();
+    });
+
+    const keyboardHide = Keyboard.addListener(hideEvent, () => {
+      Animated.timing(sheetAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: false,
+      }).start();
+    });
+
+    return () => {
+      keyboardShow.remove();
+      keyboardHide.remove();
+    };
+  }, [sheetAnim]);
+
+  const composerBoxMinHeight = sheetAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [72, 98],
+  });
+
+  const composerSheetHeight = sheetAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [tabBarHeight + 96, tabBarHeight + 122],
+  });
+
+  const floatingButtonBottom = sheetAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [tabBarHeight + 96, height * 0.62],
+  });
 
   const scrollToCard = (index) => {
     if (scrollViewRef.current) {
@@ -59,243 +177,352 @@ export default function HomeScreen({ onProfilePress }) {
     }
   };
 
+  const handleZoom = (direction) => {
+    const factor = direction === 'in' ? 0.7 : 1.4;
+
+    const nextRegion = {
+      ...mapRegion,
+      latitudeDelta: Math.max(0.002, Math.min(1, mapRegion.latitudeDelta * factor)),
+      longitudeDelta: Math.max(0.002, Math.min(1, mapRegion.longitudeDelta * factor)),
+    };
+
+    setMapRegion(nextRegion);
+
+    if (mapRef.current) {
+      mapRef.current.animateToRegion(nextRegion, 250);
+    }
+  };
+
+  const handleInputFocus = () => {
+    Animated.timing(sheetAnim, {
+      toValue: 1,
+      duration: 220,
+      useNativeDriver: false,
+    }).start();
+
+    if (typeof onChatPress === 'function') {
+      onChatPress();
+    }
+  };
+
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.profileButton} onPress={onProfilePress}>
-          <Image
-            source={require('../assets/profile.png')}
-            style={styles.profileImage}
-          />
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.carsSection}>
-        <Animated.ScrollView
-          ref={scrollViewRef}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          decelerationRate="fast"
-          snapToInterval={SNAP_INTERVAL}
-          snapToAlignment="start"
-          disableIntervalMomentum
-          contentContainerStyle={styles.carsScroll}
-          onScroll={Animated.event(
-            [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-            { useNativeDriver: false }
-          )}
-          scrollEventThrottle={16}
-        >
-          {carData.map((car, index) => {
-            const inputRange = [
-              (index - 1) * SNAP_INTERVAL,
-              index * SNAP_INTERVAL,
-              (index + 1) * SNAP_INTERVAL,
-            ];
-
-            const scale = scrollX.interpolate({
-              inputRange,
-              outputRange: [0.96, 1, 0.96],
-              extrapolate: 'clamp',
-            });
-
-            const opacity = scrollX.interpolate({
-              inputRange,
-              outputRange: [0.82, 1, 0.82],
-              extrapolate: 'clamp',
-            });
-
-            if (car.isAddCard) {
-              return (
-                <Animated.View
-                  key={car.id}
-                  style={[
-                    styles.carCard,
-                    styles.addCarCard,
-                    { transform: [{ scale }], opacity },
-                  ]}
-                >
-                  <TouchableOpacity style={styles.addCarContent}>
-                    <Text style={styles.addCarPlus}>＋</Text>
-                    <Text style={styles.addCarText}>Add Car</Text>
-                    <Text style={styles.addCarSubtext}>Up to 7 vehicles</Text>
-                  </TouchableOpacity>
-                </Animated.View>
-              );
-            }
-
-            return (
-              <Animated.View
-                key={car.id}
-                style={[
-                  styles.carCard,
-                  { transform: [{ scale }], opacity },
-                ]}
-              >
-                <Image
-                  source={car.image}
-                  style={styles.carImage}
-                  resizeMode="contain"
-                />
-                <Text style={styles.carYear}>{car.year}</Text>
-                <Text style={styles.carTitle}>{car.title}</Text>
-              </Animated.View>
-            );
-          })}
-        </Animated.ScrollView>
-
-        <View style={styles.currentCarNameRow}>
-          {carData.map((car, index) => {
-            const inputRange = [
-              (index - 1) * SNAP_INTERVAL,
-              index * SNAP_INTERVAL,
-              (index + 1) * SNAP_INTERVAL,
-            ];
-
-            const opacity = scrollX.interpolate({
-              inputRange,
-              outputRange: [0, 1, 0],
-              extrapolate: 'clamp',
-            });
-
-            const translateY = scrollX.interpolate({
-              inputRange,
-              outputRange: [6, 0, 6],
-              extrapolate: 'clamp',
-            });
-
-            return (
-              <Animated.Text
-                key={car.id}
-                style={[
-                  styles.currentCarName,
-                  {
-                    opacity,
-                    transform: [{ translateY }],
-                  },
-                ]}
-              >
-                {car.isAddCard ? 'Add a new vehicle' : `${car.year} ${car.title}`}
-              </Animated.Text>
-            );
-          })}
+    <SafeAreaView style={globalStyles.screen}>
+      <View style={styles.screenContent}>
+        <View style={globalStyles.headerRow}>
+          <TouchableOpacity
+            style={globalStyles.profileCircle}
+            onPress={onProfilePress}
+          >
+            <Image
+              source={require('../assets/profile.png')}
+              style={globalStyles.profileImage}
+            />
+          </TouchableOpacity>
         </View>
 
-        {carData.length > 1 && (
-          <View style={styles.pagination}>
-            {carData.map((_, index) => {
+        <View style={styles.carsSection}>
+          <Animated.ScrollView
+            ref={scrollViewRef}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            decelerationRate="fast"
+            snapToInterval={SNAP_INTERVAL}
+            snapToAlignment="start"
+            disableIntervalMomentum
+            contentContainerStyle={styles.carsScroll}
+            onScroll={Animated.event(
+              [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+              { useNativeDriver: false }
+            )}
+            scrollEventThrottle={16}
+          >
+            {carData.map((car, index) => {
               const inputRange = [
                 (index - 1) * SNAP_INTERVAL,
                 index * SNAP_INTERVAL,
                 (index + 1) * SNAP_INTERVAL,
               ];
 
-              const dotWidth = scrollX.interpolate({
+              const scale = scrollX.interpolate({
                 inputRange,
-                outputRange: [8, 20, 8],
+                outputRange: [0.96, 1, 0.96],
                 extrapolate: 'clamp',
               });
 
               const opacity = scrollX.interpolate({
                 inputRange,
-                outputRange: [0.28, 1, 0.28],
+                outputRange: [0.82, 1, 0.82],
+                extrapolate: 'clamp',
+              });
+
+              if (car.isAddCard) {
+                return (
+                  <Animated.View
+                    key={car.id}
+                    style={[
+                      styles.carCard,
+                      styles.addCarCard,
+                      { transform: [{ scale }], opacity },
+                    ]}
+                  >
+                    <TouchableOpacity style={styles.addCarContent} activeOpacity={0.9}>
+                      <Text style={styles.addCarPlus}>＋</Text>
+                      <Text style={styles.addCarText}>Add Car</Text>
+                      <Text style={styles.addCarSubtext}>Up to 7 vehicles</Text>
+                    </TouchableOpacity>
+                  </Animated.View>
+                );
+              }
+
+              return (
+                <Animated.View
+                  key={car.id}
+                  style={[
+                    styles.carCard,
+                    { transform: [{ scale }], opacity },
+                  ]}
+                >
+                  <Image
+                    source={car.image}
+                    style={styles.carImage}
+                    resizeMode="contain"
+                  />
+                  <Text style={styles.carYear}>{car.year}</Text>
+                  <Text style={styles.carTitle}>{car.title}</Text>
+                </Animated.View>
+              );
+            })}
+          </Animated.ScrollView>
+
+          <View style={styles.currentCarNameRow}>
+            {carData.map((car, index) => {
+              const inputRange = [
+                (index - 1) * SNAP_INTERVAL,
+                index * SNAP_INTERVAL,
+                (index + 1) * SNAP_INTERVAL,
+              ];
+
+              const opacity = scrollX.interpolate({
+                inputRange,
+                outputRange: [0, 1, 0],
                 extrapolate: 'clamp',
               });
 
               return (
-                <TouchableOpacity
-                  key={index}
-                  activeOpacity={0.8}
-                  onPress={() => scrollToCard(index)}
+                <Animated.Text
+                  key={car.id}
+                  style={[styles.currentCarName, { opacity }]}
                 >
-                  <Animated.View
-                    style={[
-                      styles.dot,
-                      {
-                        width: dotWidth,
-                        opacity,
-                      },
-                    ]}
-                  />
-                </TouchableOpacity>
+                  {car.isAddCard ? 'Add a new vehicle' : `${car.year} ${car.title}`}
+                </Animated.Text>
               );
             })}
           </View>
-        )}
-      </View>
 
-      <View style={styles.garagesSection}>
-        <Text style={styles.sectionTitle}>Parking Garages</Text>
+          {carData.length > 1 && (
+            <View style={globalStyles.centeredRow}>
+              {carData.map((_, index) => {
+                const inputRange = [
+                  (index - 1) * SNAP_INTERVAL,
+                  index * SNAP_INTERVAL,
+                  (index + 1) * SNAP_INTERVAL,
+                ];
 
-        {garages.map((garage) => (
-          <TouchableOpacity key={garage.id} style={styles.garageCard}>
-            <Text style={styles.garageName}>{garage.name}</Text>
-            <Text style={styles.garageSpots}>{garage.spots}</Text>
-          </TouchableOpacity>
-        ))}
+                const dotWidth = scrollX.interpolate({
+                  inputRange,
+                  outputRange: [8, 20, 8],
+                  extrapolate: 'clamp',
+                });
+
+                const opacity = scrollX.interpolate({
+                  inputRange,
+                  outputRange: [0.28, 1, 0.28],
+                  extrapolate: 'clamp',
+                });
+
+                return (
+                  <TouchableOpacity
+                    key={index}
+                    activeOpacity={0.8}
+                    onPress={() => scrollToCard(index)}
+                  >
+                    <Animated.View
+                      style={[
+                        styles.dot,
+                        {
+                          width: dotWidth,
+                          opacity,
+                        },
+                      ]}
+                    />
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
+        </View>
+
+        <View style={styles.mapSection}>
+          <View style={styles.mapWrap}>
+            <MapView
+              ref={mapRef}
+              style={styles.map}
+              region={mapRegion}
+              onRegionChangeComplete={setMapRegion}
+              showsUserLocation={true}
+              initialRegion={{
+                latitude: DEFAULT_COORDS.latitude,
+                longitude: DEFAULT_COORDS.longitude,
+                latitudeDelta: 0.01,
+                longitudeDelta: 0.01,
+              }}
+            >
+              <Marker
+                coordinate={carLocation}
+                title="Your Car"
+                description="Current parked car location"
+                tracksViewChanges={false}
+              >
+                <Image
+                  source={require('../assets/car.png')}
+                  style={styles.carMarkerImage}
+                  resizeMode="contain"
+                />
+              </Marker>
+            </MapView>
+
+            <View style={styles.zoomControls}>
+              <TouchableOpacity
+                style={styles.zoomButton}
+                onPress={() => handleZoom('in')}
+              >
+                <Text style={styles.zoomText}>＋</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.zoomButton}
+                onPress={() => handleZoom('out')}
+              >
+                <Text style={styles.zoomText}>－</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Animated.View
+              style={[
+                styles.floatingButtonWrap,
+                {
+                  bottom: floatingButtonBottom,
+                },
+              ]}
+            >
+              <TouchableOpacity
+                style={styles.findParkingButton}
+                onPress={onFindPress}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.findParkingText}>Find Parking</Text>
+              </TouchableOpacity>
+            </Animated.View>
+          </View>
+
+          <Animated.View
+            style={[
+              styles.chatSheet,
+              {
+                height: composerSheetHeight,
+                paddingBottom: tabBarHeight + 10,
+              },
+            ]}
+          >
+            <View style={styles.chatInputRow}>
+              <Animated.View
+                style={[
+                  styles.chatInputWrap,
+                  {
+                    minHeight: composerBoxMinHeight,
+                  },
+                ]}
+              >
+                <TextInput
+                  style={styles.chatInput}
+                  placeholder="Ask anything..."
+                  placeholderTextColor="#777"
+                  value={message}
+                  onChangeText={setMessage}
+                  onFocus={handleInputFocus}
+                  multiline
+                />
+
+                <View style={styles.inputFooterRow}>
+                  <TouchableOpacity
+                    style={styles.footerAction}
+                    activeOpacity={0.8}
+                    onPress={onChatPress}
+                  >
+                    <Text style={styles.footerActionText}>＋</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.footerAction}
+                    activeOpacity={0.8}
+                    onPress={onChatPress}
+                  >
+                    <Image
+                      source={require('../assets/microphone.png')}
+                      style={styles.footerIcon}
+                      resizeMode="contain"
+                    />
+                  </TouchableOpacity>
+                </View>
+              </Animated.View>
+            </View>
+          </Animated.View>
+        </View>
       </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  screenContent: {
     flex: 1,
-    backgroundColor: '#fff',
-  },
-
-  header: {
-    marginTop: 10,
-    marginBottom: 20,
-    paddingHorizontal: SIDE_PADDING,
-    alignItems: 'flex-start',
-  },
-  profileButton: {
-    width: 45,
-    height: 45,
-    borderRadius: 22.5,
-    overflow: 'hidden',
-    backgroundColor: '#e5e7eb',
-  },
-  profileImage: {
-    width: '100%',
-    height: '100%',
   },
 
   carsSection: {
-    marginBottom: 28,
+    marginBottom: spacing.large,
   },
+
   carsScroll: {
-    paddingLeft: SIDE_PADDING,
-    paddingRight: SIDE_PADDING - CARD_GAP,
+    paddingLeft: spacing.screen,
+    paddingRight: spacing.screen - spacing.cardGap,
   },
+
   carCard: {
     width: CARD_WIDTH,
-    backgroundColor: '#f8f8f8',
-    borderRadius: 24,
-    padding: 20,
+    minHeight: height * 0.2,
+    borderRadius: radius.large,
+    padding: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: CARD_GAP,
-
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 4,
+    marginRight: spacing.cardGap,
+    backgroundColor: '#f8f8f8',
+    ...shadow.card,
   },
+
   carImage: {
     width: '100%',
-    height: 180,
-    marginBottom: 16,
+    height: 95,
+    marginBottom: 10,
   },
+
   carYear: {
-    fontSize: 15,
+    fontSize: 13,
     color: '#666',
-    marginBottom: 4,
+    marginBottom: 2,
   },
+
   carTitle: {
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: '700',
     color: '#000',
     textAlign: 'center',
@@ -307,85 +534,183 @@ const styles = StyleSheet.create({
     borderColor: '#c7c7c7',
     backgroundColor: '#fafafa',
   },
+
   addCarContent: {
     flex: 1,
     width: '100%',
-    minHeight: 230,
+    minHeight: 140,
     alignItems: 'center',
     justifyContent: 'center',
   },
+
   addCarPlus: {
-    fontSize: 44,
+    fontSize: 34,
     color: '#222',
-    marginBottom: 10,
+    marginBottom: 8,
   },
+
   addCarText: {
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: '700',
     color: '#000',
-    marginBottom: 6,
+    marginBottom: 4,
   },
+
   addCarSubtext: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#666',
   },
 
   currentCarNameRow: {
-    height: 28,
-    marginTop: 14,
+    height: 24,
+    marginTop: 10,
     justifyContent: 'center',
     alignItems: 'center',
   },
+
   currentCarName: {
     position: 'absolute',
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
     color: '#222',
   },
 
-  pagination: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 8,
-  },
   dot: {
     height: 8,
     borderRadius: 4,
     backgroundColor: '#000',
     marginHorizontal: 4,
+    marginTop: 6,
   },
 
-  garagesSection: {
+  mapSection: {
     flex: 1,
-    paddingHorizontal: SIDE_PADDING,
+    position: 'relative',
   },
-  sectionTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    marginBottom: 16,
-    color: '#000',
-  },
-  garageCard: {
-    backgroundColor: '#f8f8f8',
-    borderRadius: 18,
-    padding: 18,
-    marginBottom: 12,
 
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+  mapWrap: {
+    flex: 1,
   },
-  garageName: {
-    fontSize: 17,
+
+  map: {
+    width: '100%',
+    height: '100%',
+  },
+
+  carMarkerImage: {
+    width: 34,
+    height: 34,
+  },
+
+  zoomControls: {
+    position: 'absolute',
+    right: 16,
+    top: 16,
+  },
+
+  zoomButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+    ...shadow.soft,
+  },
+
+  zoomText: {
+    fontSize: 24,
     fontWeight: '600',
     color: '#000',
-    marginBottom: 4,
+    lineHeight: 24,
   },
-  garageSpots: {
-    fontSize: 14,
-    color: '#555',
+
+  floatingButtonWrap: {
+    position: 'absolute',
+    left: spacing.screen,
+    right: spacing.screen,
+    zIndex: 20,
+  },
+
+  findParkingButton: {
+    height: 54,
+    borderRadius: radius.medium,
+    backgroundColor: '#000',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadow.card,
+  },
+
+  findParkingText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+
+  chatSheet: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: -8,
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingTop: 12,
+    paddingHorizontal: 12,
+    zIndex: 10,
+    ...shadow.card,
+  },
+
+  chatInputRow: {
+    flexDirection: 'row',
+  },
+
+  chatInputWrap: {
+    flex: 1,
+    borderRadius: 28,
+    backgroundColor: '#fff',
+    paddingTop: 14,
+    paddingHorizontal: 14,
+    paddingBottom: 12,
+    justifyContent: 'space-between',
+  },
+
+  chatInput: {
+    flex: 1,
+    minHeight: 28,
+    maxHeight: 110,
+    fontSize: 16,
+    color: '#fff',
+    textAlignVertical: 'top',
+    padding: 0,
+    margin: 0,
+  },
+
+  inputFooterRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+
+  footerAction: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#e9eaee',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  footerActionText: {
+    fontSize: 18,
+    color: '#111',
+    fontWeight: '600',
+    lineHeight: 18,
+  },
+  footerIcon: {
+    width: 18,
+    height: 18,
   },
 });

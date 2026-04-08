@@ -2,13 +2,14 @@ import React, { useMemo, useState } from 'react';
 import {
   SafeAreaView,
   View,
- Text,
+  Text,
   TextInput,
   TouchableOpacity,
   StyleSheet,
   Image,
   ScrollView,
 } from 'react-native';
+import { globalStyles, spacing } from '../styles/global';
 
 export default function RegisterScreen({ onBack, onSignIn, onRegister }) {
   const [firstName, setFirstName] = useState('');
@@ -16,7 +17,6 @@ export default function RegisterScreen({ onBack, onSignIn, onRegister }) {
   const [mobile, setMobile] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-
   const [errors, setErrors] = useState({});
 
   const passwordChecks = useMemo(() => {
@@ -87,15 +87,13 @@ export default function RegisterScreen({ onBack, onSignIn, onRegister }) {
   const handleRegister = () => {
     if (!validateForm()) return;
 
-    if (onRegister) {
-      onRegister({
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        mobile: mobile.trim(),
-        email: email.trim(),
-        password,
-      });
-    }
+    onRegister?.({
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      mobile: mobile.trim(),
+      email: email.trim(),
+      password,
+    });
   };
 
   const handleMobileChange = (value) => {
@@ -106,10 +104,10 @@ export default function RegisterScreen({ onBack, onSignIn, onRegister }) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={globalStyles.screen}>
       <View style={styles.topSection}>
-        <TouchableOpacity onPress={onBack} style={styles.backButton}>
-          <Text style={styles.backArrow}>←</Text>
+        <TouchableOpacity onPress={onBack} style={globalStyles.backButton}>
+          <Text style={globalStyles.backButtonText}>←</Text>
         </TouchableOpacity>
       </View>
 
@@ -125,19 +123,21 @@ export default function RegisterScreen({ onBack, onSignIn, onRegister }) {
             resizeMode="contain"
           />
 
-          <Text style={styles.title}>Create your account</Text>
+          <Text style={[globalStyles.title, styles.title]}>Create your account</Text>
 
           <View
             style={[
+              globalStyles.inputWrapper,
               styles.inputWrapper,
-              errors.firstName && styles.inputWrapperError,
+              errors.firstName && globalStyles.inputWrapperError,
             ]}
           >
             {firstName.length > 0 && (
-              <Text style={styles.floatingLabel}>First name</Text>
+              <Text style={globalStyles.floatingLabel}>First name</Text>
             )}
             <TextInput
               style={[
+                globalStyles.input,
                 styles.input,
                 firstName.length > 0 && styles.inputWithLabel,
               ]}
@@ -152,21 +152,25 @@ export default function RegisterScreen({ onBack, onSignIn, onRegister }) {
               }}
             />
           </View>
-          {errors.firstName && (
-            <Text style={styles.errorText}>{errors.firstName}</Text>
-          )}
+          {errors.firstName ? (
+            <Text style={[globalStyles.errorText, styles.errorText]}>
+              {errors.firstName}
+            </Text>
+          ) : null}
 
           <View
             style={[
+              globalStyles.inputWrapper,
               styles.inputWrapper,
-              errors.lastName && styles.inputWrapperError,
+              errors.lastName && globalStyles.inputWrapperError,
             ]}
           >
             {lastName.length > 0 && (
-              <Text style={styles.floatingLabel}>Last name</Text>
+              <Text style={globalStyles.floatingLabel}>Last name</Text>
             )}
             <TextInput
               style={[
+                globalStyles.input,
                 styles.input,
                 lastName.length > 0 && styles.inputWithLabel,
               ]}
@@ -181,21 +185,25 @@ export default function RegisterScreen({ onBack, onSignIn, onRegister }) {
               }}
             />
           </View>
-          {errors.lastName && (
-            <Text style={styles.errorText}>{errors.lastName}</Text>
-          )}
+          {errors.lastName ? (
+            <Text style={[globalStyles.errorText, styles.errorText]}>
+              {errors.lastName}
+            </Text>
+          ) : null}
 
           <View
             style={[
+              globalStyles.inputWrapper,
               styles.inputWrapper,
-              errors.mobile && styles.inputWrapperError,
+              errors.mobile && globalStyles.inputWrapperError,
             ]}
           >
             {mobile.length > 0 && (
-              <Text style={styles.floatingLabel}>Mobile number</Text>
+              <Text style={globalStyles.floatingLabel}>Mobile number</Text>
             )}
             <TextInput
               style={[
+                globalStyles.input,
                 styles.input,
                 mobile.length > 0 && styles.inputWithLabel,
               ]}
@@ -206,21 +214,25 @@ export default function RegisterScreen({ onBack, onSignIn, onRegister }) {
               keyboardType="phone-pad"
             />
           </View>
-          {errors.mobile && (
-            <Text style={styles.errorText}>{errors.mobile}</Text>
-          )}
+          {errors.mobile ? (
+            <Text style={[globalStyles.errorText, styles.errorText]}>
+              {errors.mobile}
+            </Text>
+          ) : null}
 
           <View
             style={[
+              globalStyles.inputWrapper,
               styles.inputWrapper,
-              errors.email && styles.inputWrapperError,
+              errors.email && globalStyles.inputWrapperError,
             ]}
           >
             {email.length > 0 && (
-              <Text style={styles.floatingLabel}>Email</Text>
+              <Text style={globalStyles.floatingLabel}>Email</Text>
             )}
             <TextInput
               style={[
+                globalStyles.input,
                 styles.input,
                 email.length > 0 && styles.inputWithLabel,
               ]}
@@ -237,21 +249,25 @@ export default function RegisterScreen({ onBack, onSignIn, onRegister }) {
               keyboardType="email-address"
             />
           </View>
-          {errors.email && (
-            <Text style={styles.errorText}>{errors.email}</Text>
-          )}
+          {errors.email ? (
+            <Text style={[globalStyles.errorText, styles.errorText]}>
+              {errors.email}
+            </Text>
+          ) : null}
 
           <View
             style={[
+              globalStyles.inputWrapper,
               styles.inputWrapper,
-              errors.password && styles.inputWrapperError,
+              errors.password && globalStyles.inputWrapperError,
             ]}
           >
             {password.length > 0 && (
-              <Text style={styles.floatingLabel}>Password</Text>
+              <Text style={globalStyles.floatingLabel}>Password</Text>
             )}
             <TextInput
               style={[
+                globalStyles.input,
                 styles.input,
                 password.length > 0 && styles.inputWithLabel,
               ]}
@@ -268,9 +284,11 @@ export default function RegisterScreen({ onBack, onSignIn, onRegister }) {
               autoCapitalize="none"
             />
           </View>
-          {errors.password && (
-            <Text style={styles.errorText}>{errors.password}</Text>
-          )}
+          {errors.password ? (
+            <Text style={[globalStyles.errorText, styles.errorText]}>
+              {errors.password}
+            </Text>
+          ) : null}
 
           <View style={styles.rulesContainer}>
             <PasswordRule
@@ -295,8 +313,11 @@ export default function RegisterScreen({ onBack, onSignIn, onRegister }) {
             />
           </View>
 
-          <TouchableOpacity style={styles.button} onPress={handleRegister}>
-            <Text style={styles.buttonText}>Register</Text>
+          <TouchableOpacity
+            style={[globalStyles.buttonPrimary, styles.button]}
+            onPress={handleRegister}
+          >
+            <Text style={globalStyles.buttonTextPrimary}>Register</Text>
           </TouchableOpacity>
 
           <Text style={styles.linkRow}>
@@ -325,124 +346,96 @@ function PasswordRule({ passed, text }) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    paddingHorizontal: 24,
-  },
   topSection: {
     marginTop: 10,
     marginBottom: 10,
+    paddingHorizontal: spacing.screen,
   },
-  backButton: {
-    alignSelf: 'flex-start',
-    padding: 10,
-  },
-  backArrow: {
-    fontSize: 30,
-    color: '#000',
-  },
+
   scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: spacing.screen,
     paddingBottom: 40,
   },
+
   content: {
     alignItems: 'center',
     justifyContent: 'flex-start',
     marginTop: 10,
   },
+
   image: {
     width: '85%',
     height: 170,
     marginBottom: 18,
   },
+
   title: {
-    fontSize: 30,
-    fontWeight: '700',
     marginBottom: 24,
     textAlign: 'center',
-    color: '#000',
   },
+
   inputWrapper: {
     width: '85%',
     height: 64,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 12,
-    justifyContent: 'center',
-    paddingHorizontal: 14,
     marginBottom: 8,
-    backgroundColor: '#fff',
-    position: 'relative',
   },
-  inputWrapperError: {
-    borderColor: '#d32f2f',
-  },
-  floatingLabel: {
-    position: 'absolute',
-    top: 8,
-    left: 14,
-    fontSize: 12,
-    color: '#666',
-    backgroundColor: '#fff',
-  },
+
   input: {
-    fontSize: 16,
-    color: '#000',
-    padding: 0,
-    margin: 0,
+    width: '100%',
   },
+
   inputWithLabel: {
     marginTop: 14,
   },
+
   errorText: {
     width: '85%',
-    color: '#d32f2f',
-    fontSize: 12,
     marginBottom: 12,
   },
+
   rulesContainer: {
     width: '85%',
     marginTop: 4,
     marginBottom: 20,
   },
+
   ruleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 6,
   },
+
   ruleIcon: {
     width: 20,
     fontSize: 14,
     color: '#888',
   },
+
   ruleIconPassed: {
     color: '#1f7a1f',
   },
+
   ruleText: {
     fontSize: 13,
     color: '#666',
   },
+
   ruleTextPassed: {
     color: '#1f7a1f',
   },
+
   button: {
-    backgroundColor: '#000',
-    paddingVertical: 16,
-    borderRadius: 28,
-    alignItems: 'center',
     width: '85%',
     marginBottom: 16,
   },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
+
   linkRow: {
     textAlign: 'center',
     fontSize: 14,
     color: '#000',
   },
+
   signInLink: {
     color: '#007AFF',
     fontWeight: '500',

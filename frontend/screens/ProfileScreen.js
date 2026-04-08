@@ -10,6 +10,7 @@ import {
   Alert,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { globalStyles, spacing, radius, shadow } from '../styles/global';
 
 export default function ProfileScreen({ onBack, onSignOut }) {
   const [profileImage, setProfileImage] = useState(
@@ -29,7 +30,7 @@ export default function ProfileScreen({ onBack, onSignOut }) {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [1, 1],
       quality: 1,
@@ -45,108 +46,112 @@ export default function ProfileScreen({ onBack, onSignOut }) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.topBar}>
-        <TouchableOpacity onPress={onBack} style={styles.backButton}>
-          <Text style={styles.backArrow}>←</Text>
-        </TouchableOpacity>
+    <SafeAreaView style={globalStyles.screen}>
+      <View style={styles.topSection}>
+        <View style={styles.topBar}>
+          <TouchableOpacity onPress={onBack} style={globalStyles.backButton}>
+            <Text style={globalStyles.backButtonText}>←</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity onPress={onSignOut} style={styles.signOutButton}>
-          <Text style={styles.signOutText}>Sign Out</Text>
-        </TouchableOpacity>
+          <TouchableOpacity onPress={onSignOut} style={styles.signOutButton}>
+            <Text style={styles.signOutText}>Sign Out</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.headerSection}>
-          <View style={styles.profileImageWrapper}>
-            <Image source={profileImage} style={styles.profileImage} />
+        <View style={styles.contentInset}>
+          <View style={styles.headerSection}>
+            <View style={styles.profileImageWrapper}>
+              <Image source={profileImage} style={styles.profileImage} />
 
-            <TouchableOpacity
-              style={styles.editPhotoButton}
-              onPress={handleEditPhoto}
-            >
-              <Text style={styles.editPhotoText}>Edit</Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.editPhotoButton}
+                onPress={handleEditPhoto}
+              >
+                <Text style={styles.editPhotoText}>Edit</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.name}>Sarah Liang</Text>
           </View>
 
-          <Text style={styles.name}>Sarah Liang</Text>
-        </View>
+          <View style={styles.menuSection}>
+            <TouchableOpacity
+              style={styles.menuCard}
+              onPress={() => handleMenuPress('Personal Info')}
+            >
+              <Text style={styles.menuTitle}>Personal Info</Text>
+              <Text style={styles.menuArrow}>›</Text>
+            </TouchableOpacity>
 
-        <View style={styles.menuSection}>
-          <TouchableOpacity
-            style={styles.menuCard}
-            onPress={() => handleMenuPress('Personal Info')}
-          >
-            <Text style={styles.menuTitle}>Personal Info</Text>
-            <Text style={styles.menuArrow}>›</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.menuCard}
+              onPress={() => handleMenuPress('My Vehicles')}
+            >
+              <Text style={styles.menuTitle}>My Vehicles</Text>
+              <Text style={styles.menuArrow}>›</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.menuCard}
-            onPress={() => handleMenuPress('My Vehicles')}
-          >
-            <Text style={styles.menuTitle}>My Vehicles</Text>
-            <Text style={styles.menuArrow}>›</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.menuCard}
+              onPress={() => handleMenuPress('My History')}
+            >
+              <Text style={styles.menuTitle}>My History</Text>
+              <Text style={styles.menuArrow}>›</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.menuCard}
-            onPress={() => handleMenuPress('My History')}
-          >
-            <Text style={styles.menuTitle}>My History</Text>
-            <Text style={styles.menuArrow}>›</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.menuCard}
+              onPress={() => handleMenuPress('Notification Settings')}
+            >
+              <Text style={styles.menuTitle}>Notification Settings</Text>
+              <Text style={styles.menuArrow}>›</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.menuCard}
-            onPress={() => handleMenuPress('Notification Settings')}
-          >
-            <Text style={styles.menuTitle}>Notification Settings</Text>
-            <Text style={styles.menuArrow}>›</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.menuCard}
+              onPress={() => handleMenuPress('Payment Method')}
+            >
+              <Text style={styles.menuTitle}>Payment Method</Text>
+              <Text style={styles.menuArrow}>›</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.menuCard}
-            onPress={() => handleMenuPress('Payment Method')}
-          >
-            <Text style={styles.menuTitle}>Payment Method</Text>
-            <Text style={styles.menuArrow}>›</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.menuCard}
+              onPress={() => handleMenuPress('Saved Garages')}
+            >
+              <Text style={styles.menuTitle}>Saved Garages</Text>
+              <Text style={styles.menuArrow}>›</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.menuCard}
-            onPress={() => handleMenuPress('Saved Garages')}
-          >
-            <Text style={styles.menuTitle}>Saved Garages</Text>
-            <Text style={styles.menuArrow}>›</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.menuCard}
+              onPress={() => handleMenuPress('Help and Support')}
+            >
+              <Text style={styles.menuTitle}>Help and Support</Text>
+              <Text style={styles.menuArrow}>›</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.menuCard}
-            onPress={() => handleMenuPress('Help and Support')}
-          >
-            <Text style={styles.menuTitle}>Help and Support</Text>
-            <Text style={styles.menuArrow}>›</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.menuCard}
+              onPress={() => handleMenuPress('Privacy & Security')}
+            >
+              <Text style={styles.menuTitle}>Privacy & Security</Text>
+              <Text style={styles.menuArrow}>›</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.menuCard}
-            onPress={() => handleMenuPress('Privacy & Security')}
-          >
-            <Text style={styles.menuTitle}>Privacy & Security</Text>
-            <Text style={styles.menuArrow}>›</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.menuCard}
-            onPress={() => handleMenuPress('App Settings')}
-          >
-            <Text style={styles.menuTitle}>App Settings</Text>
-            <Text style={styles.menuArrow}>›</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.menuCard}
+              onPress={() => handleMenuPress('App Settings')}
+            >
+              <Text style={styles.menuTitle}>App Settings</Text>
+              <Text style={styles.menuArrow}>›</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -154,55 +159,56 @@ export default function ProfileScreen({ onBack, onSignOut }) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    paddingHorizontal: 24,
+  topSection: {
+    marginTop: 10,
+    marginBottom: 10,
+    paddingHorizontal: spacing.screen,
   },
 
   topBar: {
-    marginTop: 10,
-    marginBottom: 20,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-  },
-  backButton: {
-    padding: 10,
-  },
-  backArrow: {
-    fontSize: 30,
-    color: '#000',
-  },
-  signOutButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 18,
-    backgroundColor: '#f3f4f6',
-  },
-  signOutText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#d32f2f',
   },
 
   scrollContent: {
     paddingBottom: 40,
   },
 
+  contentInset: {
+    flex: 1,
+    paddingHorizontal: spacing.screen,
+  },
+
+  signOutButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: radius.medium,
+    backgroundColor: '#f3f4f6',
+  },
+
+  signOutText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#d32f2f',
+  },
+
   headerSection: {
     alignItems: 'center',
     marginBottom: 32,
   },
+
   profileImageWrapper: {
     position: 'relative',
-    marginBottom: 18,
+    marginBottom: spacing.large,
   },
+
   profileImage: {
     width: 110,
     height: 110,
     borderRadius: 55,
   },
+
   editPhotoButton: {
     position: 'absolute',
     right: -6,
@@ -210,13 +216,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#000',
     paddingVertical: 6,
     paddingHorizontal: 12,
-    borderRadius: 16,
+    borderRadius: radius.medium,
   },
+
   editPhotoText: {
     color: '#fff',
     fontSize: 12,
     fontWeight: '600',
   },
+
   name: {
     fontSize: 28,
     fontWeight: '700',
@@ -225,29 +233,27 @@ const styles = StyleSheet.create({
 
   menuSection: {
     width: '100%',
+    paddingHorizontal: 2,
   },
+
   menuCard: {
-    width: '100%',
     backgroundColor: '#f8f8f8',
-    borderRadius: 18,
+    borderRadius: radius.medium,
     paddingVertical: 18,
     paddingHorizontal: 18,
-    marginBottom: 12,
+    marginBottom: spacing.medium,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
+    ...shadow.soft,
   },
+
   menuTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#000',
   },
+
   menuArrow: {
     fontSize: 22,
     color: '#888',

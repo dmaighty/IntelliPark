@@ -7,26 +7,25 @@ import {
   StyleSheet,
   Image,
 } from 'react-native';
+import { globalStyles, spacing } from '../styles/global';
 
-export default function WelcomeScreen( {onSignIn, onRegister}) {
+export default function WelcomeScreen({ onSignIn, onRegister }) {
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Top Section */}
+    <SafeAreaView style={[globalStyles.screen, styles.container]}>
       <View style={styles.topSection}>
         <View style={styles.topRow}>
           <View style={styles.topItem}>
-            <Text style={styles.label}>Region</Text>
+            <Text style={[globalStyles.label, styles.label]}>Region</Text>
             <Text style={styles.value}>USA</Text>
           </View>
 
           <View style={styles.topItem}>
-            <Text style={styles.label}>Language</Text>
+            <Text style={[globalStyles.label, styles.label]}>Language</Text>
             <Text style={styles.value}>English</Text>
           </View>
         </View>
       </View>
 
-      {/* Middle Section */}
       <View style={styles.middleSection}>
         <Text style={styles.title}>IntelliPark</Text>
 
@@ -37,14 +36,19 @@ export default function WelcomeScreen( {onSignIn, onRegister}) {
         />
       </View>
 
-      {/* Bottom Section */}
       <View style={styles.bottomSection}>
-        <TouchableOpacity style={styles.primaryButton} onPress={onSignIn}>
-          <Text style={styles.primaryText}>Sign In</Text>
+        <TouchableOpacity
+          style={[globalStyles.buttonPrimary, styles.button]}
+          onPress={onSignIn}
+        >
+          <Text style={globalStyles.buttonTextPrimary}>Sign In</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.secondaryButton} onPress={onRegister}>
-            <Text style={styles.secondaryText}>Register</Text>
+        <TouchableOpacity
+          style={[globalStyles.buttonSecondary, styles.button]}
+          onPress={onRegister}
+        >
+          <Text style={globalStyles.buttonTextSecondary}>Register</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -53,9 +57,7 @@ export default function WelcomeScreen( {onSignIn, onRegister}) {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    paddingHorizontal: 24,
+    paddingHorizontal: spacing.screen,
   },
 
   topSection: {
@@ -63,69 +65,55 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+
   topRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     width: '80%',
   },
+
   topItem: {
-    minWidth: 90,
+    flex: 1,
+    alignItems: 'center',
   },
+
   label: {
-    fontSize: 12,
-    color: '#888',
     marginBottom: 4,
   },
+
   value: {
     fontSize: 16,
     fontWeight: '500',
+    color: '#000',
   },
 
   middleSection: {
     flex: 2,
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: -15,
   },
+
   title: {
-    fontSize: 34,
+    fontSize: 40,
     fontWeight: '700',
     marginBottom: 20,
+    color: '#000',
   },
+
   image: {
-    width: '90%',
-    height: 260,
+    width: '100%',
+    height: 280,
   },
 
   bottomSection: {
     flex: 1,
     justifyContent: 'flex-end',
     alignItems: 'center',
-    paddingBottom: 30,
+    paddingBottom: 60,
     gap: 12,
   },
-  primaryButton: {
-    backgroundColor: '#000',
-    paddingVertical: 16,
-    borderRadius: 28,
-    alignItems: 'center',
+
+  button: {
     width: '60%',
-  },
-  primaryText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  secondaryButton: {
-    borderWidth: 1,
-    borderColor: '#000',
-    paddingVertical: 16,
-    borderRadius: 28,
-    alignItems: 'center',
-    width: '60%',
-  },
-  secondaryText: {
-    color: '#000',
-    fontSize: 16,
-    fontWeight: '600',
   },
 });
