@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   SafeAreaView,
   View,
@@ -11,6 +11,9 @@ import {
   TextInput,
   Keyboard,
   Platform,
+  Modal,
+  Pressable,
+  Alert,
 } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
@@ -26,101 +29,127 @@ const DEFAULT_COORDS = {
   longitude: -121.8811,
 };
 
-const cars = [
+const DEFAULT_LAT_DELTA = 0.006;
+const DEFAULT_LNG_DELTA = 0.006;
+const FOCUSED_LAT_DELTA = 0.0035;
+const FOCUSED_LNG_DELTA = 0.0035;
+
+const defaultCars = [
   {
     id: 1,
     year: '2024',
     title: 'Toyota Camry',
-    image: require('../assets/car.png'),
+    make: 'Toyota Camry',
+    licensePlate: '8ABC123',
+    color: 'Black',
+    colorId: 'black',
+    image: require('../assets/parked-black-car.png'),
+    parkedLocation: {
+      latitude: 37.3356,
+      longitude: -121.8810,
+    },
   },
   {
     id: 2,
     year: '2023',
     title: 'Honda Civic',
-    image: require('../assets/car.png'),
+    make: 'Honda Civic',
+    licensePlate: '8XYZ456',
+    color: 'White',
+    colorId: 'white',
+    image: require('../assets/parked-white-car.png'),
+    parkedLocation: {
+      latitude: 37.3364,
+      longitude: -121.8789,
+    },
   },
   {
     id: 3,
     year: '2022',
     title: 'Tesla Model 3',
-    image: require('../assets/car.png'),
+    make: 'Tesla Model 3',
+    licensePlate: '9TES789',
+    color: 'Red',
+    colorId: 'red',
+    image: require('../assets/parked-red-car.png'),
+    parkedLocation: {
+      latitude: 37.3348,
+      longitude: -121.8832,
+    },
   },
 ];
 
+const buildRegion = (
+  coordinate,
+  latitudeDelta = DEFAULT_LAT_DELTA,
+  longitudeDelta = DEFAULT_LNG_DELTA
+) => ({
+  latitude: coordinate.latitude,
+  longitude: coordinate.longitude,
+  latitudeDelta,
+  longitudeDelta,
+});
+
+const getCarDisplayName = (car) => {
+  if (!car) return '';
+  return car.make?.trim() || car.title?.trim() || 'Untitled Car';
+};
+
+const getCarSubtitle = (car) => {
+  if (!car) return '';
+  return [car.year, car.make || car.title].filter(Boolean).join(' ').trim();
+};
+
 export default function HomeScreen({
+  cars = defaultCars,
   onProfilePress,
   onFindPress,
   onChatPress,
+  onAddCarPress,
+  onEditCarPress,
+  onRemoveCarPress,
   tabBarHeight = 100,
 }) {
   const scrollX = useRef(new Animated.Value(0)).current;
   const scrollViewRef = useRef(null);
   const mapRef = useRef(null);
   const sheetAnim = useRef(new Animated.Value(0)).current;
+  const initialFocusDoneRef = useRef(false);
 
-  const [userLocation, setUserLocation] = useState(DEFAULT_COORDS);
-  const [carLocation, setCarLocation] = useState({
-    latitude: DEFAULT_COORDS.latitude + 0.0007,
-    longitude: DEFAULT_COORDS.longitude - 0.0005,
-  });
+  const visibleCars = cars.slice(0, 7);
+  const carData = [...visibleCars, { id: 'add', isAddCard: true }];
+  const firstMapCoordinate = visibleCars[0]?.parkedLocation || DEFAULT_COORDS;
 
-  const [mapRegion, setMapRegion] = useState({
-    latitude: DEFAULT_COORDS.latitude,
-    longitude: DEFAULT_COORDS.longitude,
-    latitudeDelta: 0.01,
-    longitudeDelta: 0.01,
-  });
+  const [locationGranted, setLocationGranted] = useState(false);
+  const [mapReady, setMapReady] = useState(false);
+  const [mapRegion, setMapRegion] = useState(buildRegion(firstMapCoordinate));
 
   const [message, setMessage] = useState('');
+  const [menuCar, setMenuCar] = useState(null);
+  const [currentCarIndex, setCurrentCarIndex] = useState(0);
 
-  const carData = [...cars.slice(0, 7), { id: 'add', isAddCard: true }];
+  const selectedCar =
+    visibleCars.length > 0
+      ? visibleCars[Math.min(currentCarIndex, visibleCars.length - 1)]
+      : null;
 
   useEffect(() => {
     let mounted = true;
 
-    const loadLocation = async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-
-      if (status !== 'granted') {
-        if (!mounted) return;
-        setUserLocation(DEFAULT_COORDS);
-        return;
-      }
-
-      const location = await Location.getCurrentPositionAsync({});
-      if (!mounted) return;
-
-      const coords = {
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-      };
-
-      const nextCarLocation = {
-        latitude: coords.latitude + 0.0007,
-        longitude: coords.longitude - 0.0005,
-      };
-
-      setUserLocation(coords);
-      setCarLocation(nextCarLocation);
-
-      const nextRegion = {
-        latitude: coords.latitude,
-        longitude: coords.longitude,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
-      };
-
-      setMapRegion(nextRegion);
-
-      if (mapRef.current) {
-        mapRef.current.fitToCoordinates([coords, nextCarLocation], {
-          edgePadding: { top: 80, right: 80, bottom: 160, left: 80 },
-          animated: true,
-        });
+    const requestLocationPermission = async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (mounted) {
+          setLocationGranted(status === 'granted');
+        }
+      } catch (error) {
+        if (mounted) {
+          setLocationGranted(false);
+        }
       }
     };
 
-    loadLocation();
+    requestLocationPermission();
 
     return () => {
       mounted = false;
@@ -128,8 +157,62 @@ export default function HomeScreen({
   }, []);
 
   useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    if (visibleCars.length === 0) {
+      setCurrentCarIndex(0);
+      return;
+    }
+
+    if (currentCarIndex > visibleCars.length - 1) {
+      setCurrentCarIndex(visibleCars.length - 1);
+    }
+  }, [visibleCars.length, currentCarIndex]);
+
+  const focusMapOnCar = useCallback(
+    (car, animated = true) => {
+      if (!car?.parkedLocation || !mapRef.current || !mapReady) return;
+  
+      const latitudeOffset = -0.0012;
+  
+      const centeredCoordinate = {
+        latitude: car.parkedLocation.latitude + latitudeOffset,
+        longitude: car.parkedLocation.longitude,
+      };
+  
+      const nextRegion = buildRegion(
+        centeredCoordinate,
+        FOCUSED_LAT_DELTA,
+        FOCUSED_LNG_DELTA
+      );
+  
+      setMapRegion(nextRegion);
+  
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          mapRef.current?.animateCamera(
+            {
+              center: centeredCoordinate,
+              zoom: 17,
+            },
+            { duration: animated ? 300 : 0 }
+          );
+        });
+      });
+    },
+    [mapReady]
+  );
+
+  useEffect(() => {
+    if (!mapReady || !selectedCar || initialFocusDoneRef.current) return;
+
+    initialFocusDoneRef.current = true;
+    focusMapOnCar(selectedCar, false);
+  }, [mapReady, selectedCar, focusMapOnCar]);
+
+  useEffect(() => {
+    const showEvent =
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent =
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
 
     const keyboardShow = Keyboard.addListener(showEvent, () => {
       Animated.timing(sheetAnim, {
@@ -175,6 +258,22 @@ export default function HomeScreen({
         animated: true,
       });
     }
+
+    if (index >= 0 && index < visibleCars.length) {
+      const car = visibleCars[index];
+      setCurrentCarIndex(index);
+      focusMapOnCar(car, true);
+    }
+  };
+
+  const handleCardSnap = (offsetX) => {
+    const snappedIndex = Math.round(offsetX / SNAP_INTERVAL);
+
+    if (snappedIndex >= 0 && snappedIndex < visibleCars.length) {
+      const car = visibleCars[snappedIndex];
+      setCurrentCarIndex(snappedIndex);
+      focusMapOnCar(car, true);
+    }
   };
 
   const handleZoom = (direction) => {
@@ -182,8 +281,14 @@ export default function HomeScreen({
 
     const nextRegion = {
       ...mapRegion,
-      latitudeDelta: Math.max(0.002, Math.min(1, mapRegion.latitudeDelta * factor)),
-      longitudeDelta: Math.max(0.002, Math.min(1, mapRegion.longitudeDelta * factor)),
+      latitudeDelta: Math.max(
+        0.002,
+        Math.min(1, mapRegion.latitudeDelta * factor)
+      ),
+      longitudeDelta: Math.max(
+        0.002,
+        Math.min(1, mapRegion.longitudeDelta * factor)
+      ),
     };
 
     setMapRegion(nextRegion);
@@ -200,9 +305,33 @@ export default function HomeScreen({
       useNativeDriver: false,
     }).start();
 
-    if (typeof onChatPress === 'function') {
-      onChatPress();
-    }
+    onChatPress?.();
+  };
+
+  const handleEditCar = () => {
+    const selectedMenuCar = menuCar;
+    setMenuCar(null);
+    onEditCarPress?.(selectedMenuCar);
+  };
+
+  const handleRemoveCar = () => {
+    const selectedMenuCar = menuCar;
+    setMenuCar(null);
+
+    if (!selectedMenuCar) return;
+
+    Alert.alert(
+      'Remove car',
+      `Remove ${getCarDisplayName(selectedMenuCar)}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: () => onRemoveCarPress?.(selectedMenuCar.id),
+        },
+      ]
+    );
   };
 
   return (
@@ -234,6 +363,9 @@ export default function HomeScreen({
               [{ nativeEvent: { contentOffset: { x: scrollX } } }],
               { useNativeDriver: false }
             )}
+            onMomentumScrollEnd={(event) =>
+              handleCardSnap(event.nativeEvent.contentOffset.x)
+            }
             scrollEventThrottle={16}
           >
             {carData.map((car, index) => {
@@ -265,7 +397,11 @@ export default function HomeScreen({
                       { transform: [{ scale }], opacity },
                     ]}
                   >
-                    <TouchableOpacity style={styles.addCarContent} activeOpacity={0.9}>
+                    <TouchableOpacity
+                      style={styles.addCarContent}
+                      activeOpacity={0.9}
+                      onPress={() => onAddCarPress?.()}
+                    >
                       <Text style={styles.addCarPlus}>＋</Text>
                       <Text style={styles.addCarText}>Add Car</Text>
                       <Text style={styles.addCarSubtext}>Up to 7 vehicles</Text>
@@ -282,13 +418,31 @@ export default function HomeScreen({
                     { transform: [{ scale }], opacity },
                   ]}
                 >
+                  <TouchableOpacity
+                    style={styles.cardMenuButton}
+                    activeOpacity={0.8}
+                    onPress={() => setMenuCar(car)}
+                  >
+                    <Text style={styles.cardMenuText}>⋯</Text>
+                  </TouchableOpacity>
+
                   <Image
                     source={car.image}
                     style={styles.carImage}
                     resizeMode="contain"
                   />
-                  <Text style={styles.carYear}>{car.year}</Text>
-                  <Text style={styles.carTitle}>{car.title}</Text>
+
+                  <Text style={styles.carTitle}>{getCarDisplayName(car)}</Text>
+
+                  <View style={styles.carMetaRow}>
+                    {!!car.year && <Text style={styles.carMetaText}>{car.year}</Text>}
+                    {!!car.year && !!car.licensePlate && (
+                      <Text style={styles.carMetaDot}>•</Text>
+                    )}
+                    {!!car.licensePlate && (
+                      <Text style={styles.carMetaText}>{car.licensePlate}</Text>
+                    )}
+                  </View>
                 </Animated.View>
               );
             })}
@@ -313,7 +467,7 @@ export default function HomeScreen({
                   key={car.id}
                   style={[styles.currentCarName, { opacity }]}
                 >
-                  {car.isAddCard ? 'Add a new vehicle' : `${car.year} ${car.title}`}
+                  {car.isAddCard ? 'Add a new vehicle' : getCarSubtitle(car)}
                 </Animated.Text>
               );
             })}
@@ -367,28 +521,28 @@ export default function HomeScreen({
             <MapView
               ref={mapRef}
               style={styles.map}
-              region={mapRegion}
+              initialRegion={buildRegion(firstMapCoordinate)}
+              onMapReady={() => setMapReady(true)}
               onRegionChangeComplete={setMapRegion}
-              showsUserLocation={true}
-              initialRegion={{
-                latitude: DEFAULT_COORDS.latitude,
-                longitude: DEFAULT_COORDS.longitude,
-                latitudeDelta: 0.01,
-                longitudeDelta: 0.01,
-              }}
+              showsUserLocation={locationGranted}
+              followsUserLocation={false}
             >
-              <Marker
-                coordinate={carLocation}
-                title="Your Car"
-                description="Current parked car location"
-                tracksViewChanges={false}
-              >
-                <Image
-                  source={require('../assets/car.png')}
-                  style={styles.carMarkerImage}
-                  resizeMode="contain"
-                />
-              </Marker>
+              {selectedCar?.parkedLocation && (
+                <Marker
+                  key={selectedCar.id}
+                  coordinate={selectedCar.parkedLocation}
+                  title={getCarDisplayName(selectedCar)}
+                  description={selectedCar.licensePlate || 'Saved car location'}
+                  anchor={{ x: 0.5, y: 0.5 }}
+                  tracksViewChanges={true}
+                >
+                  <Image
+                    source={selectedCar.image}
+                    style={styles.carMarkerImage}
+                    resizeMode="contain"
+                  />
+                </Marker>
+              )}
             </MapView>
 
             <View style={styles.zoomControls}>
@@ -479,6 +633,45 @@ export default function HomeScreen({
           </Animated.View>
         </View>
       </View>
+
+      <Modal
+        visible={!!menuCar}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setMenuCar(null)}
+      >
+        <Pressable style={styles.menuOverlay} onPress={() => setMenuCar(null)}>
+          <Pressable style={styles.menuSheet} onPress={() => {}}>
+            <Text style={styles.menuTitle}>
+              {menuCar ? getCarDisplayName(menuCar) : ''}
+            </Text>
+
+            <TouchableOpacity
+              style={styles.menuAction}
+              activeOpacity={0.85}
+              onPress={handleEditCar}
+            >
+              <Text style={styles.menuActionText}>Edit details</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.menuAction, styles.menuActionDanger]}
+              activeOpacity={0.85}
+              onPress={handleRemoveCar}
+            >
+              <Text style={styles.menuActionDangerText}>Remove car</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuCancel}
+              activeOpacity={0.85}
+              onPress={() => setMenuCar(null)}
+            >
+              <Text style={styles.menuCancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -498,10 +691,13 @@ const styles = StyleSheet.create({
   },
 
   carCard: {
+    position: 'relative',
     width: CARD_WIDTH,
-    minHeight: height * 0.2,
+    minHeight: height * 0.22,
     borderRadius: radius.large,
-    padding: 16,
+    paddingTop: 22,
+    paddingBottom: 16,
+    paddingHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.cardGap,
@@ -509,23 +705,61 @@ const styles = StyleSheet.create({
     ...shadow.card,
   },
 
+  cardMenuButton: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#ededed',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 5,
+  },
+
+  cardMenuText: {
+    fontSize: 22,
+    lineHeight: 22,
+    color: '#111',
+    fontWeight: '700',
+    marginTop: -6,
+  },
+
   carImage: {
     width: '100%',
     height: 95,
-    marginBottom: 10,
-  },
-
-  carYear: {
-    fontSize: 13,
-    color: '#666',
-    marginBottom: 2,
+    marginBottom: 12,
   },
 
   carTitle: {
+    width: '100%',
     fontSize: 18,
     fontWeight: '700',
     color: '#000',
     textAlign: 'center',
+    lineHeight: 24,
+  },
+
+  carMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+    minHeight: 18,
+  },
+
+  carMetaText: {
+    fontSize: 13,
+    color: '#666',
+    fontWeight: '600',
+  },
+
+  carMetaDot: {
+    marginHorizontal: 6,
+    fontSize: 13,
+    color: '#666',
+    fontWeight: '700',
   },
 
   addCarCard: {
@@ -562,7 +796,7 @@ const styles = StyleSheet.create({
   },
 
   currentCarNameRow: {
-    height: 24,
+    height: 28,
     marginTop: 10,
     justifyContent: 'center',
     alignItems: 'center',
@@ -573,6 +807,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#222',
+    textAlign: 'center',
+    paddingHorizontal: 24,
   },
 
   dot: {
@@ -598,8 +834,8 @@ const styles = StyleSheet.create({
   },
 
   carMarkerImage: {
-    width: 34,
-    height: 34,
+    width: 36,
+    height: 36,
   },
 
   zoomControls: {
@@ -681,7 +917,7 @@ const styles = StyleSheet.create({
     minHeight: 28,
     maxHeight: 110,
     fontSize: 16,
-    color: '#fff',
+    color: '#111',
     textAlignVertical: 'top',
     padding: 0,
     margin: 0,
@@ -709,8 +945,71 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     lineHeight: 18,
   },
+
   footerIcon: {
     width: 18,
     height: 18,
+  },
+
+  menuOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'flex-end',
+    padding: 16,
+  },
+
+  menuSheet: {
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    padding: 16,
+    ...shadow.card,
+  },
+
+  menuTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#111',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+
+  menuAction: {
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: '#f4f4f4',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+
+  menuActionText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#111',
+  },
+
+  menuActionDanger: {
+    backgroundColor: '#fff1f1',
+  },
+
+  menuActionDangerText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#c62828',
+  },
+
+  menuCancel: {
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: '#111',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+  },
+
+  menuCancelText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
   },
 });
