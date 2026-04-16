@@ -89,9 +89,14 @@ const NEARBY_GARAGES = [
   },
 ];
 
-const DRAWER_EXPANDED_HEIGHT = Math.min(560, height * 0.72);
-const DRAWER_COLLAPSED_HEIGHT = 112;
-const COLLAPSED_OFFSET = DRAWER_EXPANDED_HEIGHT - DRAWER_COLLAPSED_HEIGHT;
+const DRAWER_HEIGHT = height * 0.88;
+const COLLAPSED_VISIBLE_HEIGHT = 52;
+const MID_VISIBLE_HEIGHT = height * 0.45;
+const FULL_VISIBLE_HEIGHT = height * 0.82;
+
+const FULL_OFFSET = DRAWER_HEIGHT - FULL_VISIBLE_HEIGHT;
+const MID_OFFSET = DRAWER_HEIGHT - MID_VISIBLE_HEIGHT;
+const COLLAPSED_OFFSET = DRAWER_HEIGHT - COLLAPSED_VISIBLE_HEIGHT;
 
 const getDistanceMiles = (a, b) => {
   const toRad = (value) => (value * Math.PI) / 180;
@@ -122,6 +127,27 @@ const buildDirectionsUrl = (garage) => {
 
   return `https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=driving`;
 };
+
+const getTop5ClosestGarages = (point) => {
+  return [...NEARBY_GARAGES]
+    .sort((a, b) => {
+      const distanceA = getDistanceMiles(point, a);
+      const distanceB = getDistanceMiles(point, b);
+      return distanceA - distanceB;
+    })
+    .slice(0, 5);
+};
+
+const getOffsetRegion = (
+  coordinate,
+  latitudeDelta = 0.01,
+  longitudeDelta = 0.01
+) => ({
+  latitude: coordinate.latitude - latitudeDelta * 0.28,
+  longitude: coordinate.longitude,
+  latitudeDelta,
+  longitudeDelta,
+});
 
 export default function FindScreen({
   tabBarHeight = 100,
@@ -200,30 +226,20 @@ export default function FindScreen({
 
   const referencePoint = searchPin || userLocation || carLocation || DEFAULT_COORDS;
 
-  const garageResults = useMemo(() => {
-    const trimmed = query.trim().toLowerCase();
-
-    let results = [...NEARBY_GARAGES].sort((a, b) => {
-      const distanceA = getDistanceMiles(referencePoint, a);
-      const distanceB = getDistanceMiles(referencePoint, b);
-      return distanceA - distanceB;
-    });
-
-    if (!trimmed) return results;
-
-    const filtered = results.filter(
-      (spot) =>
-        spot.name.toLowerCase().includes(trimmed) ||
-        spot.address.toLowerCase().includes(trimmed)
-    );
-
-    return filtered.length ? filtered : results;
-  }, [query, referencePoint]);
+  const top5Garages = useMemo(() => {
+    return getTop5ClosestGarages(referencePoint);
+  }, [referencePoint]);
 
   const selectedGarage =
-    garageResults.find((spot) => spot.id === selectedSpotId) ||
-    garageResults[0] ||
+    top5Garages.find((spot) => spot.id === selectedSpotId) ||
+    top5Garages[0] ||
     null;
+
+  useEffect(() => {
+    if (top5Garages.length > 0 && !top5Garages.some((g) => g.id === selectedSpotId)) {
+      setSelectedSpotId(top5Garages[0].id);
+    }
+  }, [top5Garages, selectedSpotId]);
 
   const animateDrawer = (toValue) => {
     currentOffset.current = toValue;
@@ -237,20 +253,15 @@ export default function FindScreen({
     }).start();
   };
 
-  const expandDrawer = () => animateDrawer(0);
+  const expandDrawer = () => animateDrawer(FULL_OFFSET);
+  const expandHalfDrawer = () => animateDrawer(MID_OFFSET);
   const collapseDrawer = () => animateDrawer(COLLAPSED_OFFSET);
 
   const focusGarage = (garage) => {
     setSelectedSpotId(garage.id);
     expandDrawer();
 
-    const nextRegion = {
-      latitude: garage.latitude,
-      longitude: garage.longitude,
-      latitudeDelta: 0.008,
-      longitudeDelta: 0.008,
-    };
-
+    const nextRegion = getOffsetRegion(garage, 0.008, 0.008);
     setMapRegion(nextRegion);
 
     if (mapRef.current) {
@@ -281,13 +292,7 @@ export default function FindScreen({
     const target = userLocation || carLocation;
     if (!target) return;
 
-    const nextRegion = {
-      latitude: target.latitude,
-      longitude: target.longitude,
-      latitudeDelta: 0.012,
-      longitudeDelta: 0.012,
-    };
-
+    const nextRegion = getOffsetRegion(target, 0.012, 0.012);
     setMapRegion(nextRegion);
     mapRef.current.animateToRegion(nextRegion, 280);
   };
@@ -317,29 +322,37 @@ export default function FindScreen({
 
       setSearchPin(coords);
 
-      const nearestGarage = [...NEARBY_GARAGES].sort((a, b) => {
-        const distanceA = getDistanceMiles(coords, a);
-        const distanceB = getDistanceMiles(coords, b);
-        return distanceA - distanceB;
-      })[0];
+      const nearestTop5 = getTop5ClosestGarages(coords);
 
-      if (nearestGarage) {
-        setSelectedSpotId(nearestGarage.id);
+      if (nearestTop5.length > 0) {
+        setSelectedSpotId(nearestTop5[0].id);
       }
 
-      expandDrawer();
+      expandHalfDrawer();
 
-      const nextRegion = {
-        latitude: coords.latitude,
-        longitude: coords.longitude,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
-      };
-
-      setMapRegion(nextRegion);
-
-      if (mapRef.current) {
-        mapRef.current.animateToRegion(nextRegion, 300);
+      if (mapRef.current && nearestTop5.length > 0) {
+        mapRef.current.fitToCoordinates(
+          [
+            coords,
+            ...nearestTop5.map((garage) => ({
+              latitude: garage.latitude,
+              longitude: garage.longitude,
+            })),
+          ],
+          {
+            edgePadding: {
+              top: 120,
+              right: 70,
+              bottom: 260,
+              left: 70,
+            },
+            animated: true,
+          }
+        );
+      } else {
+        const nextRegion = getOffsetRegion(coords, 0.01, 0.01);
+        setMapRegion(nextRegion);
+        mapRef.current?.animateToRegion(nextRegion, 300);
       }
     } catch (error) {
       setSearchPin(null);
@@ -380,35 +393,63 @@ export default function FindScreen({
 
   const panResponder = useRef(
     PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dy) > 6,
+      onMoveShouldSetPanResponder: (_, gesture) =>
+        Math.abs(gesture.dy) > Math.abs(gesture.dx) && Math.abs(gesture.dy) > 4,
+
       onPanResponderMove: (_, gesture) => {
         const nextValue = Math.max(
-          0,
+          FULL_OFFSET,
           Math.min(COLLAPSED_OFFSET, currentOffset.current + gesture.dy)
         );
         translateY.setValue(nextValue);
       },
+
       onPanResponderRelease: (_, gesture) => {
         const nextValue = Math.max(
-          0,
+          FULL_OFFSET,
           Math.min(COLLAPSED_OFFSET, currentOffset.current + gesture.dy)
         );
 
+        const isNear = (value, target, threshold = 30) =>
+          Math.abs(value - target) <= threshold;
+
         if (gesture.dy < -40) {
-          expandDrawer();
+          if (isNear(currentOffset.current, COLLAPSED_OFFSET)) {
+            animateDrawer(MID_OFFSET);
+            return;
+          }
+
+          if (isNear(currentOffset.current, MID_OFFSET)) {
+            animateDrawer(FULL_OFFSET);
+            return;
+          }
+
+          animateDrawer(FULL_OFFSET);
           return;
         }
 
         if (gesture.dy > 40) {
-          collapseDrawer();
+          if (isNear(currentOffset.current, FULL_OFFSET)) {
+            animateDrawer(MID_OFFSET);
+            return;
+          }
+
+          if (isNear(currentOffset.current, MID_OFFSET)) {
+            animateDrawer(COLLAPSED_OFFSET);
+            return;
+          }
+
+          animateDrawer(COLLAPSED_OFFSET);
           return;
         }
 
-        if (nextValue < COLLAPSED_OFFSET / 2) {
-          expandDrawer();
-        } else {
-          collapseDrawer();
-        }
+        const snapPoints = [FULL_OFFSET, MID_OFFSET, COLLAPSED_OFFSET];
+
+        const nearestPoint = snapPoints.reduce((prev, curr) =>
+          Math.abs(curr - nextValue) < Math.abs(prev - nextValue) ? curr : prev
+        );
+
+        animateDrawer(nearestPoint);
       },
     })
   ).current;
@@ -447,7 +488,7 @@ export default function FindScreen({
             />
           )}
 
-          {NEARBY_GARAGES.map((spot) => (
+          {top5Garages.map((spot) => (
             <Marker
               key={spot.id}
               coordinate={{
@@ -474,28 +515,30 @@ export default function FindScreen({
           style={[
             styles.drawer,
             {
-              bottom: tabBarHeight - 8,
-              height: DRAWER_EXPANDED_HEIGHT,
+              bottom: tabBarHeight - 2,
+              height: DRAWER_HEIGHT,
               transform: [{ translateY }],
             },
           ]}
         >
-          <View {...panResponder.panHandlers} style={styles.drawerHandleArea}>
-            <View style={styles.grabber} />
-          </View>
+          <View {...panResponder.panHandlers} style={styles.drawerHeaderDragArea}>
+            <View style={styles.drawerHandleArea}>
+              <View style={styles.grabber} />
+            </View>
 
-          <View style={styles.searchWrap}>
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search here"
-              placeholderTextColor="#777"
-              value={query}
-              onChangeText={setQuery}
-              onFocus={expandDrawer}
-              onSubmitEditing={() => handleSearchAddress(query)}
-              returnKeyType="search"
-            />
-            {isSearching && <Text style={styles.searchingText}>Searching…</Text>}
+            <View style={styles.searchWrap}>
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search here"
+                placeholderTextColor="#777"
+                value={query}
+                onChangeText={setQuery}
+                onFocus={expandHalfDrawer}
+                onSubmitEditing={() => handleSearchAddress(query)}
+                returnKeyType="search"
+              />
+              {isSearching && <Text style={styles.searchingText}>Searching…</Text>}
+            </View>
           </View>
 
           <View style={styles.expandedContent}>
@@ -550,9 +593,9 @@ export default function FindScreen({
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
             >
-              <Text style={styles.sectionTitle}>Nearby garages</Text>
+              <Text style={styles.sectionTitle}>Top 5 nearby garages</Text>
 
-              {garageResults.map((spot) => {
+              {top5Garages.map((spot) => {
                 const isSelected = selectedSpotId === spot.id;
 
                 return (
@@ -664,7 +707,12 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingBottom: 16,
+    overflow: 'hidden',
     ...shadow.card,
+  },
+
+  drawerHeaderDragArea: {
+    paddingBottom: 6,
   },
 
   drawerHandleArea: {
@@ -708,6 +756,7 @@ const styles = StyleSheet.create({
   expandedContent: {
     flex: 1,
     paddingTop: 14,
+    paddingBottom: 20,
   },
 
   selectedGarageCard: {

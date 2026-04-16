@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   SafeAreaView,
   View,
@@ -25,7 +25,6 @@ const carColors = [
     swatch: '#F5F5F5',
     image: require('../assets/parked-white-car.png'),
   },
-  
   {
     id: 'red',
     label: 'Red',
@@ -52,18 +51,42 @@ const carColors = [
   },
 ];
 
-export default function AddCarScreen({ onBackPress, onSaveCar }) {
+export default function AddCarScreen({
+  initialCar = null,
+  onBack,
+  onSave,
+}) {
   const [make, setMake] = useState('');
   const [year, setYear] = useState('');
   const [licensePlate, setLicensePlate] = useState('');
   const [selectedColor, setSelectedColor] = useState(carColors[0]);
+
+  useEffect(() => {
+    if (initialCar) {
+      setMake(initialCar.make || initialCar.title || '');
+      setYear(initialCar.year || '');
+      setLicensePlate(initialCar.licensePlate || '');
+
+      const matchedColor =
+        carColors.find((color) => color.id === initialCar.colorId) ||
+        carColors.find((color) => color.label === initialCar.color) ||
+        carColors[0];
+
+      setSelectedColor(matchedColor);
+    } else {
+      setMake('');
+      setYear('');
+      setLicensePlate('');
+      setSelectedColor(carColors[0]);
+    }
+  }, [initialCar]);
 
   const isValid = useMemo(() => {
     return (
       make.trim().length > 0 &&
       year.trim().length === 4 &&
       licensePlate.trim().length > 0 &&
-      selectedColor
+      !!selectedColor
     );
   }, [make, year, licensePlate, selectedColor]);
 
@@ -87,33 +110,39 @@ export default function AddCarScreen({ onBackPress, onSaveCar }) {
       return;
     }
 
-    const newCar = {
-      id: Date.now(),
+    const savedCar = {
+      ...(initialCar || {}),
       make: trimmedMake,
+      title: trimmedMake,
       year: trimmedYear,
       licensePlate: trimmedPlate,
       color: selectedColor.label,
-      title: trimmedMake,
+      colorId: selectedColor.id,
       image: selectedColor.image,
     };
 
-    if (typeof onSaveCar === 'function') {
-      onSaveCar(newCar);
+    if (typeof onSave === 'function') {
+      onSave(savedCar);
       return;
     }
 
-    Alert.alert('Saved', `${trimmedYear} ${trimmedMake} added.`);
+    Alert.alert(
+      'Saved',
+      `${trimmedYear} ${trimmedMake} ${initialCar ? 'updated' : 'added'}.`
+    );
   };
 
   return (
     <SafeAreaView style={globalStyles.screen}>
       <View style={styles.container}>
         <View style={styles.headerRow}>
-          <TouchableOpacity style={styles.backButton} onPress={onBackPress}>
+          <TouchableOpacity style={styles.backButton} onPress={onBack}>
             <Text style={styles.backButtonText}>‹</Text>
           </TouchableOpacity>
 
-          <Text style={styles.headerTitle}>Add New Car</Text>
+          <Text style={styles.headerTitle}>
+            {initialCar ? 'Edit Car' : 'Add New Car'}
+          </Text>
 
           <View style={styles.headerSpacer} />
         </View>
@@ -132,7 +161,8 @@ export default function AddCarScreen({ onBackPress, onSaveCar }) {
               {year || 'YYYY'} {make || 'Your Car'}
             </Text>
             <Text style={styles.heroSubtitle}>
-              {selectedColor.label} • {licensePlate ? licensePlate.toUpperCase() : 'LICENSE PLATE'}
+              {selectedColor.label} •{' '}
+              {licensePlate ? licensePlate.toUpperCase() : 'LICENSE PLATE'}
             </Text>
           </View>
 
@@ -196,7 +226,8 @@ export default function AddCarScreen({ onBackPress, onSaveCar }) {
                       style={[
                         styles.colorSwatch,
                         { backgroundColor: colorOption.swatch },
-                        (colorOption.id === 'white' || colorOption.id === 'silver') &&
+                        (colorOption.id === 'white' ||
+                          colorOption.id === 'silver') &&
                           styles.lightSwatch,
                       ]}
                     />
@@ -221,7 +252,9 @@ export default function AddCarScreen({ onBackPress, onSaveCar }) {
             onPress={handleSave}
             activeOpacity={0.85}
           >
-            <Text style={styles.saveButtonText}>Save Car</Text>
+            <Text style={styles.saveButtonText}>
+              {initialCar ? 'Save Changes' : 'Save Car'}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>

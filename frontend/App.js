@@ -11,160 +11,16 @@ import ChatScreen from './screens/ChatScreen';
 import FindScreen from './screens/FindScreen';
 import AddCarScreen from './screens/AddCarScreen';
 import BottomTabs from './components/BottomTabs';
+import { defaultCars } from './data/defaultCars';
 
 const { height } = Dimensions.get('window');
 const TAB_BAR_HEIGHT = height * 0.105;
 
-const HARDCODED_SPOTS = [
-  {
-    label: 'SJSU South Garage',
-    coordinates: { latitude: 37.333683, longitude: -121.880487 },
-  },
-  {
-    label: 'SJSU West Garage',
-    coordinates: { latitude: 37.33592, longitude: -121.88218 },
-  },
-  {
-    label: 'SJSU North Garage',
-    coordinates: { latitude: 37.33652, longitude: -121.88094 },
-  },
-  {
-    label: '7th Street Spot',
-    coordinates: { latitude: 37.33541, longitude: -121.87976 },
-  },
-  {
-    label: 'San Salvador Spot',
-    coordinates: { latitude: 37.33428, longitude: -121.88192 },
-  },
-];
-
-const getSpotForIndex = (index) =>
-  HARDCODED_SPOTS[index % HARDCODED_SPOTS.length];
-
-const minutesAgo = (minutes) =>
-  new Date(Date.now() - minutes * 60 * 1000).toISOString();
-
 export default function App() {
   const [screen, setScreen] = useState('welcome');
   const [identifier, setIdentifier] = useState('');
+  const [cars, setCars] = useState(defaultCars);
   const [editingCar, setEditingCar] = useState(null);
-
-  const [cars, setCars] = useState([
-    {
-      id: 1,
-      year: '2024',
-      title: 'My Camry',
-      make: 'Toyota Camry',
-      licensePlate: '8ABC123',
-      color: 'Black',
-      colorId: 'black',
-      image: require('./assets/parked-black-car.png'),
-      isParked: true,
-      parkedSpotName: 'SJSU South Garage',
-      parkedLocation: { latitude: 37.333683, longitude: -121.880487 },
-      parkedSince: minutesAgo(42),
-    },
-    {
-      id: 2,
-      year: '2023',
-      title: 'Civic',
-      make: 'Honda Civic',
-      licensePlate: '8XYZ456',
-      color: 'White',
-      colorId: 'white',
-      image: require('./assets/parked-white-car.png'),
-      isParked: false,
-      parkedSpotName: 'SJSU West Garage',
-      parkedLocation: { latitude: 37.33592, longitude: -121.88218 },
-      parkedSince: null,
-    },
-    {
-      id: 3,
-      year: '2022',
-      title: 'Model 3',
-      make: 'Tesla Model 3',
-      licensePlate: '9TES789',
-      color: 'Red',
-      colorId: 'red',
-      image: require('./assets/parked-red-car.png'),
-      isParked: true,
-      parkedSpotName: 'SJSU North Garage',
-      parkedLocation: { latitude: 37.33652, longitude: -121.88094 },
-      parkedSince: minutesAgo(135),
-    },
-  ]);
-
-  const openAddCar = () => {
-    setEditingCar(null);
-    setScreen('addCar');
-  };
-
-  const openEditCar = (car) => {
-    setEditingCar(car);
-    setScreen('addCar');
-  };
-
-  const handleSaveCar = (carData) => {
-    setCars((prev) => {
-      if (editingCar) {
-        return prev.map((car) =>
-          car.id === carData.id
-            ? {
-                ...car,
-                ...carData,
-              }
-            : car
-        );
-      }
-
-      const spot = getSpotForIndex(prev.length);
-
-      return [
-        {
-          ...carData,
-          title: carData.title || carData.make,
-          isParked: false,
-          parkedSpotName: spot.label,
-          parkedLocation: spot.coordinates,
-          parkedSince: null,
-        },
-        ...prev,
-      ];
-    });
-
-    setEditingCar(null);
-    setScreen('home');
-  };
-
-  const handleRemoveCar = (carId) => {
-    setCars((prev) => prev.filter((car) => car.id !== carId));
-  };
-
-  const handleToggleParked = (carId) => {
-    setCars((prev) =>
-      prev.map((car, index) => {
-        if (car.id !== carId) return car;
-
-        const fallbackSpot = getSpotForIndex(index);
-
-        if (car.isParked) {
-          return {
-            ...car,
-            isParked: false,
-            parkedSince: null,
-          };
-        }
-
-        return {
-          ...car,
-          isParked: true,
-          parkedSpotName: car.parkedSpotName || fallbackSpot.label,
-          parkedLocation: car.parkedLocation || fallbackSpot.coordinates,
-          parkedSince: new Date().toISOString(),
-        };
-      })
-    );
-  };
 
   const isSignedInArea = [
     'home',
@@ -173,13 +29,39 @@ export default function App() {
     'past',
     'profile',
     'addCar',
+    'editCar',
   ].includes(screen);
 
+  const handleAddCarSave = (newCar) => {
+    setCars((prev) => [
+      ...prev,
+      {
+        id: Date.now().toString(),
+        ...newCar,
+      },
+    ]);
+    setScreen('home');
+  };
+
+  const handleEditCarPress = (car) => {
+    setEditingCar(car);
+    setScreen('editCar');
+  };
+
+  const handleEditCarSave = (updatedCar) => {
+    setCars((prev) =>
+      prev.map((car) => (car.id === updatedCar.id ? updatedCar : car))
+    );
+    setEditingCar(null);
+    setScreen('home');
+  };
+
+  const handleRemoveCar = (carId) => {
+    setCars((prev) => prev.filter((car) => car.id !== carId));
+  };
+
   return (
-    <View
-      key={isSignedInArea ? 'signed-in' : 'signed-out'}
-      style={styles.appContainer}
-    >
+    <View style={styles.appContainer}>
       {!isSignedInArea && screen === 'welcome' && (
         <WelcomeScreen
           onSignIn={() => setScreen('signin')}
@@ -219,40 +101,31 @@ export default function App() {
           {screen === 'home' && (
             <HomeScreen
               cars={cars}
-              onAddCarPress={openAddCar}
-              onEditCarPress={openEditCar}
-              onRemoveCarPress={handleRemoveCar}
-              onToggleParkedPress={handleToggleParked}
               onProfilePress={() => setScreen('profile')}
               onFindPress={() => setScreen('find')}
               onChatPress={() => setScreen('chat')}
-              tabBarHeight={TAB_BAR_HEIGHT}
-            />
-          )}
-
-          {screen === 'past' && (
-            <HomeScreen
-              cars={cars}
-              onAddCarPress={openAddCar}
-              onEditCarPress={openEditCar}
+              onAddCarPress={() => setScreen('addCar')}
+              onEditCarPress={handleEditCarPress}
               onRemoveCarPress={handleRemoveCar}
-              onToggleParkedPress={handleToggleParked}
-              onProfilePress={() => setScreen('profile')}
-              onFindPress={() => setScreen('find')}
-              onChatPress={() => setScreen('chat')}
               tabBarHeight={TAB_BAR_HEIGHT}
             />
           )}
 
           {screen === 'addCar' && (
             <AddCarScreen
-              key={editingCar?.id ?? 'new-car'}
+              onBack={() => setScreen('home')}
+              onSave={handleAddCarSave}
+            />
+          )}
+
+          {screen === 'editCar' && (
+            <AddCarScreen
               initialCar={editingCar}
-              onBackPress={() => {
+              onBack={() => {
                 setEditingCar(null);
                 setScreen('home');
               }}
-              onSaveCar={handleSaveCar}
+              onSave={handleEditCarSave}
             />
           )}
 
@@ -271,7 +144,20 @@ export default function App() {
             <FindScreen tabBarHeight={TAB_BAR_HEIGHT} />
           )}
 
-          {screen !== 'chat' && screen !== 'addCar' && (
+          {screen === 'past' && (
+            <HomeScreen
+              cars={cars}
+              onProfilePress={() => setScreen('profile')}
+              onFindPress={() => setScreen('find')}
+              onChatPress={() => setScreen('chat')}
+              onAddCarPress={() => setScreen('addCar')}
+              onEditCarPress={handleEditCarPress}
+              onRemoveCarPress={handleRemoveCar}
+              tabBarHeight={TAB_BAR_HEIGHT}
+            />
+          )}
+
+          {screen !== 'chat' && screen !== 'addCar' && screen !== 'editCar' && (
             <BottomTabs
               activeScreen={screen}
               onFindPress={() => setScreen('find')}
