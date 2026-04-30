@@ -1,8 +1,9 @@
 from fastapi import FastAPI
-from app.routes import admins, drivers, health, lots, parking, users
+from app.routes import admins, auth, drivers, health, lots, parking, users
 
 app = FastAPI(title="IntelliPark API")
 app.include_router(health.router, prefix="/api")
+app.include_router(auth.router, prefix="/api")
 app.include_router(users.router, prefix="/api")
 app.include_router(drivers.router, prefix="/api")
 app.include_router(admins.router, prefix="/api")

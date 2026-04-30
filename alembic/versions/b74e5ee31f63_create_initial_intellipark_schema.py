@@ -48,14 +48,14 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('user_id')
     )
-    op.create_table('drivers',
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('user_id', sa.Integer(), nullable=False),
-    sa.Column('phone', sa.String(length=20), nullable=True),
-    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('user_id')
-    )
+    # op.create_table('drivers',
+    # sa.Column('id', sa.Integer(), nullable=False),
+    # sa.Column('user_id', sa.Integer(), nullable=False),
+    # sa.Column('phone', sa.String(length=20), nullable=True),
+    # sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    # sa.PrimaryKeyConstraint('id'),
+    # sa.UniqueConstraint('user_id')
+    # )
     op.create_table('parking_levels',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('parking_lot_id', sa.Integer(), nullable=False),
