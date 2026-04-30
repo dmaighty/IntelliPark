@@ -27,3 +27,19 @@ def get_my_profile(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user
+
+# update user profile
+@router.put("/me/profile", response_model=UserOut)
+def update_my_profile(
+    user_id: int,
+    updates: dict,
+    db: Session = Depends(get_db),
+):
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    for key, value in updates.items():
+        setattr(user, key, value)
+    db.commit()
+    db.refresh(user)
+    return user

@@ -22,3 +22,23 @@ def get_all_vehicles_for_driver(user_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="User not found")
     vehicles = db.scalars(select(Vehicle).where(Vehicle.driver_id == user_id)).all()
     return vehicles
+
+# update vehicle
+@router.put("/{vehicle_id}", response_model=VehicleOut)
+def update_vehicle(vehicle_id: int, updates: dict, db: Session = Depends(get_db)):
+    vehicle = db.get(Vehicle, vehicle_id)
+    if not vehicle:
+        raise HTTPException(status_code=404, detail="Vehicle not found")
+    for key, value in updates.items():
+        setattr(vehicle, key, value)
+    db.commit()
+    db.refresh(vehicle)
+    return vehicle
+
+# create vehicle
+@router.post("/", response_model=VehicleOut)
+def create_vehicle(vehicle: VehicleIn, db: Session = Depends(get_db)):
+    db.add(vehicle)
+    db.commit()
+    db.refresh(vehicle)
+    return vehicle
