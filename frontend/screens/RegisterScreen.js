@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { globalStyles, spacing } from '../styles/global';
 
-export default function RegisterScreen({ onBack, onSignIn, onRegister }) {
+export default function RegisterScreen({ onBack, onSignIn, onRegister, onDevBypass }) {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [mobile, setMobile] = useState('');
@@ -326,6 +326,16 @@ export default function RegisterScreen({ onBack, onSignIn, onRegister }) {
               Sign in
             </Text>
           </Text>
+
+          {typeof __DEV__ !== 'undefined' && __DEV__ && onDevBypass ? (
+            <TouchableOpacity
+              style={styles.devBypass}
+              onPress={onDevBypass}
+              accessibilityLabel="Dev bypass registration"
+            >
+              <Text style={styles.devBypassText}>Skip registration (dev)</Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -439,5 +449,17 @@ const styles = StyleSheet.create({
   signInLink: {
     color: '#007AFF',
     fontWeight: '500',
+  },
+
+  devBypass: {
+    marginTop: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
+
+  devBypassText: {
+    fontSize: 13,
+    color: '#888',
+    textAlign: 'center',
   },
 });

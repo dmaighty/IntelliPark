@@ -8,14 +8,33 @@ import {
   StyleSheet,
   Image,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { globalStyles, spacing } from '../styles/global';
 
 export default function PasswordScreen({ identifier, onBack, onSignIn }) {
   const [password, setPassword] = useState('');
   const [isFocused, setIsFocused] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const showFloatingLabel = isFocused || password.length > 0;
+
+  const handleSignIn = async () => {
+    if (!password.trim()) {
+      setError('Password is required');
+      return;
+    }
+    setError('');
+    setLoading(true);
+    try {
+      await onSignIn?.(password);
+    } catch (e) {
+      setError(e.message || 'Sign in failed');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <SafeAreaView style={globalStyles.screen}>
@@ -48,6 +67,7 @@ export default function PasswordScreen({ identifier, onBack, onSignIn }) {
               globalStyles.inputWrapper,
               styles.inputWrapper,
               isFocused && globalStyles.inputWrapperFocused,
+              error && globalStyles.inputWrapperError,
             ]}
           >
             {showFloatingLabel && (
@@ -63,19 +83,32 @@ export default function PasswordScreen({ identifier, onBack, onSignIn }) {
               placeholder={showFloatingLabel ? '' : 'Password'}
               placeholderTextColor="#888"
               value={password}
-              onChangeText={setPassword}
+              onChangeText={(v) => {
+                setPassword(v);
+                if (error) setError('');
+              }}
               secureTextEntry
               autoCapitalize="none"
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}
+              editable={!loading}
             />
           </View>
 
+          {error ? (
+            <Text style={[globalStyles.errorText, styles.errorText]}>{error}</Text>
+          ) : null}
+
           <TouchableOpacity
-            style={[globalStyles.buttonPrimary, styles.button]}
-            onPress={onSignIn}
+            style={[globalStyles.buttonPrimary, styles.button, loading && styles.buttonDisabled]}
+            onPress={handleSignIn}
+            disabled={loading}
           >
-            <Text style={globalStyles.buttonTextPrimary}>Sign In</Text>
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={globalStyles.buttonTextPrimary}>Sign In</Text>
+            )}
           </TouchableOpacity>
 
           <Text style={styles.linkRow}>
@@ -134,7 +167,7 @@ const styles = StyleSheet.create({
   inputWrapper: {
     width: '85%',
     height: 64,
-    marginBottom: 20,
+    marginBottom: 8,
   },
 
   input: {
@@ -145,9 +178,18 @@ const styles = StyleSheet.create({
     marginTop: 14,
   },
 
+  errorText: {
+    width: '85%',
+    marginBottom: 12,
+  },
+
   button: {
     width: '85%',
     marginBottom: 16,
+  },
+
+  buttonDisabled: {
+    opacity: 0.7,
   },
 
   linkRow: {

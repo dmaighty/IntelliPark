@@ -1,6 +1,9 @@
 import { StatusBar } from 'expo-status-bar';
-import { useState } from 'react';
-import { View, Dimensions, StyleSheet } from 'react-native';
+import { useState, useEffect } from 'react';
+import { View, Dimensions, StyleSheet, Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as authApi from './api/auth';
+import { DEV_MOCK_ACCESS_TOKEN } from './api/devAuth';
 import WelcomeScreen from './screens/WelcomeScreen';
 import SignInScreen from './screens/SignInScreen';
 import PasswordScreen from './screens/PasswordScreen';
@@ -16,11 +19,27 @@ import { defaultCars } from './data/defaultCars';
 const { height } = Dimensions.get('window');
 const TAB_BAR_HEIGHT = height * 0.105;
 
+const TOKEN_KEY = 'access_token';
+
 export default function App() {
   const [screen, setScreen] = useState('welcome');
   const [identifier, setIdentifier] = useState('');
+  const [sessionReady, setSessionReady] = useState(false);
   const [cars, setCars] = useState(defaultCars);
   const [editingCar, setEditingCar] = useState(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const t = await AsyncStorage.getItem(TOKEN_KEY);
+        if (t) {
+          setScreen('home');
+        }
+      } finally {
+        setSessionReady(true);
+      }
+    })();
+  }, []);
 
   const isSignedInArea = [
     'home',
@@ -62,110 +81,145 @@ export default function App() {
 
   return (
     <View style={styles.appContainer}>
-      {!isSignedInArea && screen === 'welcome' && (
-        <WelcomeScreen
-          onSignIn={() => setScreen('signin')}
-          onRegister={() => setScreen('register')}
-        />
-      )}
-
-      {!isSignedInArea && screen === 'signin' && (
-        <SignInScreen
-          onBack={() => setScreen('welcome')}
-          onContinue={(value) => {
-            setIdentifier(value);
-            setScreen('password');
-          }}
-          onRegister={() => setScreen('register')}
-        />
-      )}
-
-      {!isSignedInArea && screen === 'password' && (
-        <PasswordScreen
-          identifier={identifier}
-          onBack={() => setScreen('signin')}
-          onSignIn={() => setScreen('home')}
-        />
-      )}
-
-      {!isSignedInArea && screen === 'register' && (
-        <RegisterScreen
-          onBack={() => setScreen('welcome')}
-          onSignIn={() => setScreen('signin')}
-          onRegister={() => setScreen('home')}
-        />
-      )}
-
-      {isSignedInArea && (
+      {!sessionReady ? null : (
         <>
-          {screen === 'home' && (
-            <HomeScreen
-              cars={cars}
-              onProfilePress={() => setScreen('profile')}
-              onFindPress={() => setScreen('find')}
-              onChatPress={() => setScreen('chat')}
-              onAddCarPress={() => setScreen('addCar')}
-              onEditCarPress={handleEditCarPress}
-              onRemoveCarPress={handleRemoveCar}
-              tabBarHeight={TAB_BAR_HEIGHT}
+          {!isSignedInArea && screen === 'welcome' && (
+            <WelcomeScreen
+              onSignIn={() => setScreen('signin')}
+              onRegister={() => setScreen('register')}
             />
           )}
 
-          {screen === 'addCar' && (
-            <AddCarScreen
-              onBack={() => setScreen('home')}
-              onSave={handleAddCarSave}
+          {!isSignedInArea && screen === 'signin' && (
+            <SignInScreen
+              onBack={() => setScreen('welcome')}
+              onContinue={(value) => {
+                setIdentifier(value);
+                setScreen('password');
+              }}
+              onRegister={() => setScreen('register')}
+              onDevBypass={
+                typeof __DEV__ !== 'undefined' && __DEV__
+                  ? async () => {
+                      await AsyncStorage.setItem(TOKEN_KEY, DEV_MOCK_ACCESS_TOKEN);
+                      setScreen('home');
+                    }
+                  : undefined
+              }
             />
           )}
 
-          {screen === 'editCar' && (
-            <AddCarScreen
-              initialCar={editingCar}
-              onBack={() => {
-                setEditingCar(null);
+          {!isSignedInArea && screen === 'password' && (
+            <PasswordScreen
+              identifier={identifier}
+              onBack={() => setScreen('signin')}
+              onSignIn={async (password) => {
+                const data = await authApi.login(identifier.trim(), password);
+                await AsyncStorage.setItem(TOKEN_KEY, data.access_token);
                 setScreen('home');
               }}
-              onSave={handleEditCarSave}
             />
           )}
 
-          {screen === 'profile' && (
-            <ProfileScreen
-              onBack={() => setScreen('home')}
-              onSignOut={() => setScreen('welcome')}
+          {!isSignedInArea && screen === 'register' && (
+            <RegisterScreen
+              onBack={() => setScreen('welcome')}
+              onSignIn={() => setScreen('signin')}
+              onRegister={async (payload) => {
+                try {
+                  const data = await authApi.register(payload);
+                  await AsyncStorage.setItem(TOKEN_KEY, data.access_token);
+                  setScreen('home');
+                } catch (e) {
+                  Alert.alert('Registration failed', e.message || 'Unknown error');
+                }
+              }}
+              onDevBypass={
+                typeof __DEV__ !== 'undefined' && __DEV__
+                  ? async () => {
+                      await AsyncStorage.setItem(TOKEN_KEY, DEV_MOCK_ACCESS_TOKEN);
+                      setScreen('home');
+                    }
+                  : undefined
+              }
             />
           )}
 
-          {screen === 'chat' && (
-            <ChatScreen onClose={() => setScreen('home')} />
-          )}
+          {isSignedInArea && (
+            <>
+              {screen === 'home' && (
+                <HomeScreen
+                  cars={cars}
+                  onProfilePress={() => setScreen('profile')}
+                  onFindPress={() => setScreen('find')}
+                  onChatPress={() => setScreen('chat')}
+                  onAddCarPress={() => setScreen('addCar')}
+                  onEditCarPress={handleEditCarPress}
+                  onRemoveCarPress={handleRemoveCar}
+                  tabBarHeight={TAB_BAR_HEIGHT}
+                />
+              )}
 
-          {screen === 'find' && (
-            <FindScreen tabBarHeight={TAB_BAR_HEIGHT} />
-          )}
+              {screen === 'addCar' && (
+                <AddCarScreen
+                  onBack={() => setScreen('home')}
+                  onSave={handleAddCarSave}
+                />
+              )}
 
-          {screen === 'past' && (
-            <HomeScreen
-              cars={cars}
-              onProfilePress={() => setScreen('profile')}
-              onFindPress={() => setScreen('find')}
-              onChatPress={() => setScreen('chat')}
-              onAddCarPress={() => setScreen('addCar')}
-              onEditCarPress={handleEditCarPress}
-              onRemoveCarPress={handleRemoveCar}
-              tabBarHeight={TAB_BAR_HEIGHT}
-            />
-          )}
+              {screen === 'editCar' && (
+                <AddCarScreen
+                  initialCar={editingCar}
+                  onBack={() => {
+                    setEditingCar(null);
+                    setScreen('home');
+                  }}
+                  onSave={handleEditCarSave}
+                />
+              )}
 
-          {screen !== 'chat' && screen !== 'addCar' && screen !== 'editCar' && (
-            <BottomTabs
-              activeScreen={screen}
-              onFindPress={() => setScreen('find')}
-              onChatPress={() => setScreen('chat')}
-              onHomePress={() => setScreen('home')}
-              onPastPress={() => setScreen('past')}
-              onProfilePress={() => setScreen('profile')}
-            />
+              {screen === 'profile' && (
+                <ProfileScreen
+                  onBack={() => setScreen('home')}
+                  onSignOut={async () => {
+                    await AsyncStorage.removeItem(TOKEN_KEY);
+                    setScreen('welcome');
+                  }}
+                />
+              )}
+
+              {screen === 'chat' && (
+                <ChatScreen onClose={() => setScreen('home')} />
+              )}
+
+              {screen === 'find' && (
+                <FindScreen tabBarHeight={TAB_BAR_HEIGHT} />
+              )}
+
+              {screen === 'past' && (
+                <HomeScreen
+                  cars={cars}
+                  onProfilePress={() => setScreen('profile')}
+                  onFindPress={() => setScreen('find')}
+                  onChatPress={() => setScreen('chat')}
+                  onAddCarPress={() => setScreen('addCar')}
+                  onEditCarPress={handleEditCarPress}
+                  onRemoveCarPress={handleRemoveCar}
+                  tabBarHeight={TAB_BAR_HEIGHT}
+                />
+              )}
+
+              {screen !== 'chat' && screen !== 'addCar' && screen !== 'editCar' && (
+                <BottomTabs
+                  activeScreen={screen}
+                  onFindPress={() => setScreen('find')}
+                  onChatPress={() => setScreen('chat')}
+                  onHomePress={() => setScreen('home')}
+                  onPastPress={() => setScreen('past')}
+                  onProfilePress={() => setScreen('profile')}
+                />
+              )}
+            </>
           )}
         </>
       )}

@@ -1,4 +1,4 @@
-import API_BASE from './client';
+import { API_BASE } from './client';
 
 export async function getVehicle(vehicleId) {
     try {
