@@ -24,6 +24,7 @@ const TOKEN_KEY = 'access_token';
 export default function App() {
   const [screen, setScreen] = useState('welcome');
   const [identifier, setIdentifier] = useState('');
+  const [accessToken, setAccessToken] = useState(null);
   const [sessionReady, setSessionReady] = useState(false);
   const [cars, setCars] = useState(defaultCars);
   const [editingCar, setEditingCar] = useState(null);
@@ -33,6 +34,7 @@ export default function App() {
       try {
         const t = await AsyncStorage.getItem(TOKEN_KEY);
         if (t) {
+          setAccessToken(t);
           setScreen('home');
         }
       } finally {
@@ -102,6 +104,7 @@ export default function App() {
                 typeof __DEV__ !== 'undefined' && __DEV__
                   ? async () => {
                       await AsyncStorage.setItem(TOKEN_KEY, DEV_MOCK_ACCESS_TOKEN);
+                      setAccessToken(DEV_MOCK_ACCESS_TOKEN);
                       setScreen('home');
                     }
                   : undefined
@@ -116,6 +119,7 @@ export default function App() {
               onSignIn={async (password) => {
                 const data = await authApi.login(identifier.trim(), password);
                 await AsyncStorage.setItem(TOKEN_KEY, data.access_token);
+                setAccessToken(data.access_token);
                 setScreen('home');
               }}
             />
@@ -129,6 +133,7 @@ export default function App() {
                 try {
                   const data = await authApi.register(payload);
                   await AsyncStorage.setItem(TOKEN_KEY, data.access_token);
+                  setAccessToken(data.access_token);
                   setScreen('home');
                 } catch (e) {
                   Alert.alert('Registration failed', e.message || 'Unknown error');
@@ -138,6 +143,7 @@ export default function App() {
                 typeof __DEV__ !== 'undefined' && __DEV__
                   ? async () => {
                       await AsyncStorage.setItem(TOKEN_KEY, DEV_MOCK_ACCESS_TOKEN);
+                      setAccessToken(DEV_MOCK_ACCESS_TOKEN);
                       setScreen('home');
                     }
                   : undefined
@@ -180,9 +186,11 @@ export default function App() {
 
               {screen === 'profile' && (
                 <ProfileScreen
+                  accessToken={accessToken}
                   onBack={() => setScreen('home')}
                   onSignOut={async () => {
                     await AsyncStorage.removeItem(TOKEN_KEY);
+                    setAccessToken(null);
                     setScreen('welcome');
                   }}
                 />

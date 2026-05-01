@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   SafeAreaView,
   View,
@@ -8,14 +8,43 @@ import {
   Image,
   ScrollView,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { globalStyles, spacing, radius, shadow } from '../styles/global';
+import { getMyProfile } from '../api/users';
 
-export default function ProfileScreen({ onBack, onSignOut }) {
+export default function ProfileScreen({ accessToken, onBack, onSignOut }) {
   const [profileImage, setProfileImage] = useState(
     require('../assets/profile.png')
   );
+  const [profile, setProfile] = useState(null);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [profileError, setProfileError] = useState('');
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      if (!accessToken) {
+        setProfileError('Not signed in');
+        setLoadingProfile(false);
+        return;
+      }
+      setLoadingProfile(true);
+      setProfileError('');
+      try {
+        const data = await getMyProfile(accessToken);
+        if (data?.detail) {
+          throw new Error(data.detail);
+        }
+        setProfile(data);
+      } catch (e) {
+        setProfileError(e.message || 'Failed to load profile');
+      } finally {
+        setLoadingProfile(false);
+      }
+    };
+    loadProfile();
+  }, [accessToken]);
 
   const handleEditPhoto = async () => {
     const permissionResult =
@@ -76,7 +105,20 @@ export default function ProfileScreen({ onBack, onSignOut }) {
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.name}>Sarah Liang</Text>
+            {loadingProfile ? (
+              <ActivityIndicator color="#111" />
+            ) : (
+              <>
+                <Text style={styles.name}>
+                  {profile?.full_name || 'Unknown User'}
+                </Text>
+                {profileError ? (
+                  <Text style={styles.subText}>{profileError}</Text>
+                ) : (
+                  <Text style={styles.subText}>{profile?.email || ''}</Text>
+                )}
+              </>
+            )}
           </View>
 
           <View style={styles.menuSection}>
@@ -229,6 +271,12 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: '700',
     color: '#000',
+  },
+
+  subText: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 6,
   },
 
   menuSection: {
