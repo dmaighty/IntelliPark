@@ -32,7 +32,7 @@ def list_driver_vehicles(driver_id: int, db: Session = Depends(get_db)):
     if not driver:
         raise HTTPException(status_code=404, detail="Driver not found")
     rows = db.scalars(
-        select(Vehicle).where(Vehicle.driver_id == driver_id)
+        select(Vehicle).where(Vehicle.user_id == driver.user_id)
     ).all()
     return rows
 

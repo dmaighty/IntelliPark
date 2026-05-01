@@ -1,6 +1,6 @@
 from typing import Optional
 from datetime import datetime
-from sqlalchemy import String, Integer, DateTime, ForeignKey, Numeric
+from sqlalchemy import Float, String, Integer, DateTime, ForeignKey, Numeric
 from sqlalchemy.orm import Mapped, mapped_column
 from app.db.base import Base
 
@@ -9,11 +9,17 @@ class Vehicle(Base):
     __tablename__ = "vehicles"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    driver_id: Mapped[int] = mapped_column(ForeignKey("drivers.id"), nullable=False)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     license_plate: Mapped[str] = mapped_column(String(20), nullable=False, unique=True)
     make: Mapped[Optional[str]]= mapped_column(String(50), nullable=True)
     model: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     color: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
+    year: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
+    title: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    color_id: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
+    image_url: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    parked_latitude: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    parked_longitude: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 
 
 class Reservation(Base):

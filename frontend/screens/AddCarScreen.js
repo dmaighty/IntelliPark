@@ -90,7 +90,7 @@ export default function AddCarScreen({
     );
   }, [make, year, licensePlate, selectedColor]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const trimmedMake = make.trim();
     const trimmedYear = year.trim();
     const trimmedPlate = licensePlate.trim().toUpperCase();
@@ -122,7 +122,7 @@ export default function AddCarScreen({
     };
 
     if (typeof onSave === 'function') {
-      onSave(savedCar);
+      await onSave(savedCar);
       return;
     }
 

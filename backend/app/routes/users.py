@@ -4,8 +4,10 @@ from sqlalchemy.orm import Session
 
 from app.auth_deps import get_current_user
 from app.database.connection import get_db
+from app.db.models.booking import Vehicle
 from app.db.models.user import User
 from app.schemas.user import UserOut, UserUpdateIn
+from app.schemas.vehicle import VehicleCreateIn, VehicleOut
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -15,6 +17,43 @@ def get_my_profile(
     current: User = Depends(get_current_user),
 ):
     return current
+
+
+@router.get("/me/vehicles", response_model=list[VehicleOut])
+def get_my_vehicles(
+    db: Session = Depends(get_db),
+    current: User = Depends(get_current_user),
+):
+    return db.scalars(select(Vehicle).where(Vehicle.user_id == current.id)).all()
+
+
+@router.post("/me/vehicles", response_model=VehicleOut, status_code=201)
+def create_my_vehicle(
+    payload: VehicleCreateIn,
+    db: Session = Depends(get_db),
+    current: User = Depends(get_current_user),
+):
+    plate = payload.license_plate.strip().upper()
+    existing = db.scalar(select(Vehicle).where(Vehicle.license_plate == plate))
+    if existing:
+        raise HTTPException(status_code=409, detail="License plate already in use")
+    vehicle = Vehicle(
+        user_id=current.id,
+        license_plate=plate,
+        make=payload.make,
+        model=payload.model,
+        color=payload.color,
+        year=payload.year,
+        title=payload.title,
+        color_id=payload.color_id,
+        image_url=payload.image_url,
+        parked_latitude=payload.parked_latitude,
+        parked_longitude=payload.parked_longitude,
+    )
+    db.add(vehicle)
+    db.commit()
+    db.refresh(vehicle)
+    return vehicle
 
 
 @router.put("/me/profile", response_model=UserOut)
