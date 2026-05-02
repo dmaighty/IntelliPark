@@ -33,6 +33,7 @@ class ParkingLevel(Base):
     parking_lot_id: Mapped[int] = mapped_column(ForeignKey("parking_lots.id"), nullable=False)
     level_number: Mapped[int] = mapped_column(Integer, nullable=False)
     name: Mapped[str] = mapped_column(String(50), nullable=False)
+    camera_feed_url: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True)
 
     parking_lot = relationship("ParkingLot", back_populates="levels")
     spots = relationship("ParkingSpot", back_populates="level")
