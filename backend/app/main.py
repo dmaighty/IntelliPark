@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.routes import admins, auth, drivers, health, lots, parking, users, vehicle
+from app.routes import admins, auth, drivers, health, lots, parking, users, vehicle, garage_demo
 
 app = FastAPI(title="IntelliPark API")
 app.include_router(health.router, prefix="/api")
@@ -11,6 +11,7 @@ app.include_router(lots.router, prefix="/api")
 app.include_router(parking.router, prefix="/api")
 app.include_router(vehicle.router, prefix="/api")
 
+app.include_router(garage_demo.router, prefix ="/api") # demo only
 
 @app.get("/")
 def root():

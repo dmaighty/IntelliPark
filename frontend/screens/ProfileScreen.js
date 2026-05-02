@@ -20,6 +20,7 @@ export default function ProfileScreen({
   onSignOut,
   onPersonalInfo,
   refreshTrigger = 0,
+  onGarageDemo, // demo only
 }) {
   const [profileImage, setProfileImage] = useState(
     require('../assets/profile.png')
@@ -195,6 +196,16 @@ export default function ProfileScreen({
               <Text style={styles.menuTitle}>App Settings</Text>
               <Text style={styles.menuArrow}>›</Text>
             </TouchableOpacity>
+
+            
+            <TouchableOpacity
+              style={styles.menuCard}
+              onPress={() => onGarageDemo?.()} // for demo only
+            >
+              <Text style={styles.menuTitle}>Garage Demo</Text>
+              <Text style={styles.menuArrow}>›</Text>
+            </TouchableOpacity>
+
           </View>
         </View>
       </ScrollView>

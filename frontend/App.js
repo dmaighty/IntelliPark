@@ -22,6 +22,10 @@ import AddCarScreen from './screens/AddCarScreen';
 import BottomTabs from './components/BottomTabs';
 import { defaultCars } from './data/defaultCars';
 
+// for demo only
+import GarageDemo from "./screens/GarageDemo";
+
+
 const { height } = Dimensions.get('window');
 const TAB_BAR_HEIGHT = height * 0.105;
 const DEFAULT_VEHICLE_IMAGE = require('./assets/parked-black-car.png');
@@ -90,6 +94,7 @@ export default function App() {
     'addCar',
     'editCar',
     'personalInfo',
+    'garageDemo', // demo only
   ].includes(screen);
 
   const handleAddCarSave = async (newCar) => {
@@ -252,6 +257,7 @@ export default function App() {
                   accessToken={accessToken}
                   refreshTrigger={profileRefreshTrigger}
                   onPersonalInfo={() => setScreen('personalInfo')}
+                  onGarageDemo={() => setScreen('garageDemo')} // demo only
                   onBack={() => setScreen('home')}
                   onSignOut={async () => {
                     await AsyncStorage.removeItem(TOKEN_KEY);
@@ -306,6 +312,12 @@ export default function App() {
                   onProfilePress={() => setScreen('profile')}
                 />
               )}
+
+              {screen === 'garageDemo' && (
+                <GarageDemo onBack={() => setScreen('profile')}  // demo only
+                />
+              )}              
+
             </>
           )}
         </>
