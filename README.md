@@ -42,6 +42,30 @@ uvicorn app.main:app --reload
 
 API runs at http://localhost:8000
 
+## Frontend (React Native Expo)
+1. cd Frontend
+
+```bash
+cd Frontend
+```
+
+2. npm install (once only)
+
+```bash
+npm install
+```
+
+3. npm start
+
+```bash
+npm start
+```
+
+You can start ios emulator on ur mac by pressing `i` which will run ur app.
+
+or download the Expo app which will run SmartPark on ur phone locally by scanning the barcode.
+
+look at Expo docs for more information.
 
 ===============================
 # IntelliPark Database Setup Guide
