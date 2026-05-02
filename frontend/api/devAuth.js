@@ -7,6 +7,7 @@ export function getMockUser() {
     email: 'dev@localhost',
     role: 'driver',
     created_at: new Date().toISOString(),
+    phone: '(555) 000-0000',
   };
 }
 

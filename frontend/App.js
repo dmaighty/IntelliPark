@@ -4,13 +4,18 @@ import { View, Dimensions, StyleSheet, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as authApi from './api/auth';
 import { DEV_MOCK_ACCESS_TOKEN } from './api/devAuth';
-import { createMyVehicle, getMyVehicles } from './api/vehicle';
+import {
+  createMyVehicle,
+  getMyVehicles,
+  updateVehicle,
+} from './api/vehicle';
 import WelcomeScreen from './screens/WelcomeScreen';
 import SignInScreen from './screens/SignInScreen';
 import PasswordScreen from './screens/PasswordScreen';
 import RegisterScreen from './screens/RegisterScreen';
 import HomeScreen from './screens/HomeScreen';
 import ProfileScreen from './screens/ProfileScreen';
+import PersonalInfoScreen from './screens/PersonalInfoScreen';
 import ChatScreen from './screens/ChatScreen';
 import FindScreen from './screens/FindScreen';
 import AddCarScreen from './screens/AddCarScreen';
@@ -23,6 +28,21 @@ const DEFAULT_VEHICLE_IMAGE = require('./assets/parked-black-car.png');
 
 const TOKEN_KEY = 'access_token';
 
+const mapApiVehicleToCar = (v) => ({
+  id: String(v.id),
+  year: v.year || '',
+  title: v.title || [v.make, v.model].filter(Boolean).join(' ') || 'Vehicle',
+  make: [v.make, v.model].filter(Boolean).join(' '),
+  licensePlate: v.license_plate || '',
+  color: v.color || '',
+  colorId: v.color_id || (v.color || '').toLowerCase(),
+  image: DEFAULT_VEHICLE_IMAGE,
+  parkedLocation: {
+    latitude: v.parked_latitude ?? 37.3356,
+    longitude: v.parked_longitude ?? -121.881,
+  },
+});
+
 export default function App() {
   const [screen, setScreen] = useState('welcome');
   const [identifier, setIdentifier] = useState('');
@@ -30,6 +50,7 @@ export default function App() {
   const [sessionReady, setSessionReady] = useState(false);
   const [cars, setCars] = useState(defaultCars);
   const [editingCar, setEditingCar] = useState(null);
+  const [profileRefreshTrigger, setProfileRefreshTrigger] = useState(0);
 
   useEffect(() => {
     (async () => {
@@ -51,20 +72,7 @@ export default function App() {
       try {
         const rows = await getMyVehicles(accessToken);
         if (!Array.isArray(rows)) return;
-        const mapped = rows.map((v) => ({
-          id: String(v.id),
-          year: v.year || '',
-          title: v.title || [v.make, v.model].filter(Boolean).join(' ') || 'Vehicle',
-          make: [v.make, v.model].filter(Boolean).join(' '),
-          licensePlate: v.license_plate || '',
-          color: v.color || '',
-          colorId: v.color_id || (v.color || '').toLowerCase(),
-          image: DEFAULT_VEHICLE_IMAGE,
-          parkedLocation: {
-            latitude: v.parked_latitude ?? 37.3356,
-            longitude: v.parked_longitude ?? -121.881,
-          },
-        }));
+        const mapped = rows.map(mapApiVehicleToCar);
         setCars(mapped);
       } catch (e) {
         console.log('Failed to load vehicles', e?.message || e);
@@ -81,6 +89,7 @@ export default function App() {
     'profile',
     'addCar',
     'editCar',
+    'personalInfo',
   ].includes(screen);
 
   const handleAddCarSave = async (newCar) => {
@@ -95,28 +104,13 @@ export default function App() {
       setScreen('home');
       return;
     }
-    const created = await createMyVehicle(accessToken, newCar);
-    if (created?.detail) {
-      throw new Error(created.detail);
+    try {
+      const created = await createMyVehicle(accessToken, newCar);
+      setCars((prev) => [...prev, mapApiVehicleToCar(created)]);
+      setScreen('home');
+    } catch (e) {
+      Alert.alert('Could not add vehicle', e.message || 'Unknown error');
     }
-    setCars((prev) => [
-      ...prev,
-      {
-        id: String(created.id),
-        year: created.year || '',
-        title: created.title || [created.make, created.model].filter(Boolean).join(' ') || 'Vehicle',
-        make: [created.make, created.model].filter(Boolean).join(' '),
-        licensePlate: created.license_plate || '',
-        color: created.color || '',
-        colorId: created.color_id || (created.color || '').toLowerCase(),
-        image: DEFAULT_VEHICLE_IMAGE,
-        parkedLocation: {
-          latitude: created.parked_latitude ?? 37.3356,
-          longitude: created.parked_longitude ?? -121.881,
-        },
-      },
-    ]);
-    setScreen('home');
   };
 
   const handleEditCarPress = (car) => {
@@ -124,12 +118,26 @@ export default function App() {
     setScreen('editCar');
   };
 
-  const handleEditCarSave = (updatedCar) => {
-    setCars((prev) =>
-      prev.map((car) => (car.id === updatedCar.id ? updatedCar : car))
-    );
-    setEditingCar(null);
-    setScreen('home');
+  const handleEditCarSave = async (updatedCar) => {
+    if (!accessToken || accessToken === DEV_MOCK_ACCESS_TOKEN) {
+      setCars((prev) =>
+        prev.map((car) => (car.id === updatedCar.id ? updatedCar : car))
+      );
+      setEditingCar(null);
+      setScreen('home');
+      return;
+    }
+    try {
+      const row = await updateVehicle(accessToken, updatedCar.id, updatedCar);
+      const mapped = mapApiVehicleToCar(row);
+      setCars((prev) =>
+        prev.map((car) => (car.id === updatedCar.id ? mapped : car))
+      );
+      setEditingCar(null);
+      setScreen('home');
+    } catch (e) {
+      Alert.alert('Could not save vehicle', e.message || 'Unknown error');
+    }
   };
 
   const handleRemoveCar = (carId) => {
@@ -242,11 +250,24 @@ export default function App() {
               {screen === 'profile' && (
                 <ProfileScreen
                   accessToken={accessToken}
+                  refreshTrigger={profileRefreshTrigger}
+                  onPersonalInfo={() => setScreen('personalInfo')}
                   onBack={() => setScreen('home')}
                   onSignOut={async () => {
                     await AsyncStorage.removeItem(TOKEN_KEY);
                     setAccessToken(null);
                     setScreen('welcome');
+                  }}
+                />
+              )}
+
+              {screen === 'personalInfo' && (
+                <PersonalInfoScreen
+                  accessToken={accessToken}
+                  onBack={() => setScreen('profile')}
+                  onSaved={() => {
+                    setProfileRefreshTrigger((n) => n + 1);
+                    setScreen('profile');
                   }}
                 />
               )}
@@ -272,7 +293,10 @@ export default function App() {
                 />
               )}
 
-              {screen !== 'chat' && screen !== 'addCar' && screen !== 'editCar' && (
+              {screen !== 'chat' &&
+                screen !== 'addCar' &&
+                screen !== 'editCar' &&
+                screen !== 'personalInfo' && (
                 <BottomTabs
                   activeScreen={screen}
                   onFindPress={() => setScreen('find')}

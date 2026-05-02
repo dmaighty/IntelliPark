@@ -14,7 +14,13 @@ import * as ImagePicker from 'expo-image-picker';
 import { globalStyles, spacing, radius, shadow } from '../styles/global';
 import { getMyProfile } from '../api/users';
 
-export default function ProfileScreen({ accessToken, onBack, onSignOut }) {
+export default function ProfileScreen({
+  accessToken,
+  onBack,
+  onSignOut,
+  onPersonalInfo,
+  refreshTrigger = 0,
+}) {
   const [profileImage, setProfileImage] = useState(
     require('../assets/profile.png')
   );
@@ -44,7 +50,7 @@ export default function ProfileScreen({ accessToken, onBack, onSignOut }) {
       }
     };
     loadProfile();
-  }, [accessToken]);
+  }, [accessToken, refreshTrigger]);
 
   const handleEditPhoto = async () => {
     const permissionResult =
@@ -68,10 +74,6 @@ export default function ProfileScreen({ accessToken, onBack, onSignOut }) {
     if (!result.canceled) {
       setProfileImage({ uri: result.assets[0].uri });
     }
-  };
-
-  const handleMenuPress = (item) => {
-    console.log(`${item} pressed`);
   };
 
   return (
@@ -124,7 +126,7 @@ export default function ProfileScreen({ accessToken, onBack, onSignOut }) {
           <View style={styles.menuSection}>
             <TouchableOpacity
               style={styles.menuCard}
-              onPress={() => handleMenuPress('Personal Info')}
+              onPress={() => onPersonalInfo?.()}
             >
               <Text style={styles.menuTitle}>Personal Info</Text>
               <Text style={styles.menuArrow}>›</Text>
@@ -132,7 +134,7 @@ export default function ProfileScreen({ accessToken, onBack, onSignOut }) {
 
             <TouchableOpacity
               style={styles.menuCard}
-              onPress={() => handleMenuPress('My Vehicles')}
+              onPress={() => {}}
             >
               <Text style={styles.menuTitle}>My Vehicles</Text>
               <Text style={styles.menuArrow}>›</Text>
@@ -140,7 +142,7 @@ export default function ProfileScreen({ accessToken, onBack, onSignOut }) {
 
             <TouchableOpacity
               style={styles.menuCard}
-              onPress={() => handleMenuPress('My History')}
+              onPress={() => {}}
             >
               <Text style={styles.menuTitle}>My History</Text>
               <Text style={styles.menuArrow}>›</Text>
@@ -148,7 +150,7 @@ export default function ProfileScreen({ accessToken, onBack, onSignOut }) {
 
             <TouchableOpacity
               style={styles.menuCard}
-              onPress={() => handleMenuPress('Notification Settings')}
+              onPress={() => {}}
             >
               <Text style={styles.menuTitle}>Notification Settings</Text>
               <Text style={styles.menuArrow}>›</Text>
@@ -156,7 +158,7 @@ export default function ProfileScreen({ accessToken, onBack, onSignOut }) {
 
             <TouchableOpacity
               style={styles.menuCard}
-              onPress={() => handleMenuPress('Payment Method')}
+              onPress={() => {}}
             >
               <Text style={styles.menuTitle}>Payment Method</Text>
               <Text style={styles.menuArrow}>›</Text>
@@ -164,7 +166,7 @@ export default function ProfileScreen({ accessToken, onBack, onSignOut }) {
 
             <TouchableOpacity
               style={styles.menuCard}
-              onPress={() => handleMenuPress('Saved Garages')}
+              onPress={() => {}}
             >
               <Text style={styles.menuTitle}>Saved Garages</Text>
               <Text style={styles.menuArrow}>›</Text>
@@ -172,7 +174,7 @@ export default function ProfileScreen({ accessToken, onBack, onSignOut }) {
 
             <TouchableOpacity
               style={styles.menuCard}
-              onPress={() => handleMenuPress('Help and Support')}
+              onPress={() => {}}
             >
               <Text style={styles.menuTitle}>Help and Support</Text>
               <Text style={styles.menuArrow}>›</Text>
@@ -180,7 +182,7 @@ export default function ProfileScreen({ accessToken, onBack, onSignOut }) {
 
             <TouchableOpacity
               style={styles.menuCard}
-              onPress={() => handleMenuPress('Privacy & Security')}
+              onPress={() => {}}
             >
               <Text style={styles.menuTitle}>Privacy & Security</Text>
               <Text style={styles.menuArrow}>›</Text>
@@ -188,7 +190,7 @@ export default function ProfileScreen({ accessToken, onBack, onSignOut }) {
 
             <TouchableOpacity
               style={styles.menuCard}
-              onPress={() => handleMenuPress('App Settings')}
+              onPress={() => {}}
             >
               <Text style={styles.menuTitle}>App Settings</Text>
               <Text style={styles.menuArrow}>›</Text>

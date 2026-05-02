@@ -1,3 +1,5 @@
+from typing import Any
+
 from pydantic import BaseModel, ConfigDict
 
 
@@ -9,6 +11,13 @@ class ParkingLotOut(BaseModel):
     lot_type: str
     address: str
     latitude: float | None
+    longitude: float | None
+    rating: float | None
+    rate_per_hour: str | None
+    details: str | None
+    schedule: str | None
+    peak_times: list[dict[str, Any]] | None
+    spots_open: int | None
     total_spaces: int
 
 

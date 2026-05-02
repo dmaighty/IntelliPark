@@ -1,5 +1,6 @@
-from typing import Optional
-from sqlalchemy import String, Integer, Float, ForeignKey
+from typing import Any, Optional
+from sqlalchemy import String, Integer, Float, ForeignKey, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
@@ -12,6 +13,13 @@ class ParkingLot(Base):
     lot_type: Mapped[str] = mapped_column(String(20), nullable=False)  # open_lot / garage
     address: Mapped[str] = mapped_column(String(255), nullable=False)
     latitude: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    longitude: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    rating: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    rate_per_hour: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    details: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    schedule: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    peak_times: Mapped[Optional[Any]] = mapped_column(JSONB, nullable=True)
+    spots_open: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     total_spaces: Mapped[int] = mapped_column(Integer, nullable=False)
 
     levels = relationship("ParkingLevel", back_populates="parking_lot")

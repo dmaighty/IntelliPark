@@ -1,11 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.auth_deps import get_current_user
 from app.database.connection import get_db
 from app.db.models.booking import Vehicle
 from app.db.models.user import User
-from app.schemas.vehicle import VehicleCreateIn, VehicleOut
+from app.schemas.vehicle import VehicleCreateIn, VehicleOut, VehicleUpdateIn
 
 router = APIRouter(prefix="/vehicles", tags=["vehicles"])
 
@@ -25,14 +26,36 @@ def get_all_vehicles_for_user(user_id: int, db: Session = Depends(get_db)):
     vehicles = db.scalars(select(Vehicle).where(Vehicle.user_id == user_id)).all()
     return vehicles
 
-# update vehicle
 @router.put("/{vehicle_id}", response_model=VehicleOut)
-def update_vehicle(vehicle_id: int, updates: dict, db: Session = Depends(get_db)):
+def update_vehicle(
+    vehicle_id: int,
+    payload: VehicleUpdateIn,
+    db: Session = Depends(get_db),
+    current: User = Depends(get_current_user),
+):
     vehicle = db.get(Vehicle, vehicle_id)
     if not vehicle:
         raise HTTPException(status_code=404, detail="Vehicle not found")
-    for key, value in updates.items():
+    if vehicle.user_id != current.id:
+        raise HTTPException(status_code=403, detail="Not allowed to update this vehicle")
+    data = payload.model_dump(exclude_unset=True)
+    if "license_plate" in data and data["license_plate"] is not None:
+        plate = str(data["license_plate"]).strip().upper()
+        data["license_plate"] = plate
+        other = db.scalar(
+            select(Vehicle).where(
+                Vehicle.license_plate == plate,
+                Vehicle.id != vehicle_id,
+            )
+        )
+        if other:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="License plate already in use",
+            )
+    for key, value in data.items():
         setattr(vehicle, key, value)
+    db.add(vehicle)
     db.commit()
     db.refresh(vehicle)
     return vehicle

@@ -41,6 +41,13 @@ def lots_nearby(
             lot_type=lot.lot_type,
             address=lot.address,
             latitude=lot.latitude,
+            longitude=lot.longitude,
+            rating=lot.rating,
+            rate_per_hour=lot.rate_per_hour,
+            details=lot.details,
+            schedule=lot.schedule,
+            peak_times=lot.peak_times,
+            spots_open=lot.spots_open,
             total_spaces=lot.total_spaces,
             distance_score=score,
         )

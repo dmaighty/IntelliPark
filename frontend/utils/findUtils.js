@@ -53,3 +53,27 @@ export const getOffsetRegion = (
   latitudeDelta,
   longitudeDelta,
 });
+
+export const mapParkingLotApiToGarage = (row) => {
+  const lat =
+    row.latitude != null ? Number(row.latitude) : DEFAULT_COORDS.latitude;
+  const lng =
+    row.longitude != null ? Number(row.longitude) : DEFAULT_COORDS.longitude;
+
+  return {
+    id: String(row.id),
+    name: row.name ?? '',
+    address: row.address ?? '',
+    latitude: lat,
+    longitude: lng,
+    rating: row.rating != null ? Number(row.rating) : 0,
+    ratePerHour: row.rate_per_hour ?? '',
+    spotsOpen: row.spots_open != null ? row.spots_open : 0,
+    details: row.details ?? '',
+    schedule: row.schedule ?? '',
+    peakTimes: Array.isArray(row.peak_times) ? row.peak_times : [],
+    levels: [],
+    lotType: row.lot_type ?? '',
+    totalSpaces: row.total_spaces ?? 0,
+  };
+};

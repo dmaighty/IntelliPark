@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   SafeAreaView,
   View,
+  Text,
   StyleSheet,
   Animated,
   PanResponder,
@@ -10,7 +11,7 @@ import {
 } from 'react-native';
 import * as Location from 'expo-location';
 import { globalStyles } from '../styles/global';
-import { defaultGarages } from '../data/defaultGarages';
+import { getParkingLots } from '../api/parking_lots';
 import FindMap from '../components/find/FindMap';
 import FindDrawer from '../components/find/FindDrawer';
 import GarageInfoModal from '../components/find/GarageInfoModal';
@@ -19,6 +20,7 @@ import {
   getTop5ClosestGarages,
   getOffsetRegion,
   buildDirectionsUrl,
+  mapParkingLotApiToGarage,
 } from '../utils/findUtils';
 import {
   FULL_OFFSET,
@@ -41,8 +43,41 @@ export default function FindScreen({
   const [locationGranted, setLocationGranted] = useState(false);
   const [searchPin, setSearchPin] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
-  const [selectedSpotId, setSelectedSpotId] = useState(defaultGarages[0]?.id || null);
+  const [garages, setGarages] = useState([]);
+  const [lotsError, setLotsError] = useState('');
+  const [selectedSpotId, setSelectedSpotId] = useState(null);
   const [infoGarage, setInfoGarage] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadLots = async () => {
+      setLotsError('');
+      try {
+        const rows = await getParkingLots();
+        if (cancelled) return;
+        const mapped = rows
+          .filter(
+            (r) =>
+              r != null &&
+              r.latitude != null &&
+              r.longitude != null
+          )
+          .map(mapParkingLotApiToGarage);
+        setGarages(mapped);
+      } catch (e) {
+        if (!cancelled) {
+          setLotsError(e.message || 'Could not load parking lots');
+          setGarages([]);
+        }
+      }
+    };
+
+    loadLots();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const [mapRegion, setMapRegion] = useState({
     latitude: carLocation?.latitude || DEFAULT_COORDS.latitude,
@@ -104,8 +139,8 @@ export default function FindScreen({
   const referencePoint = searchPin || userLocation || carLocation || DEFAULT_COORDS;
 
   const top5Garages = useMemo(() => {
-    return getTop5ClosestGarages(referencePoint, defaultGarages);
-  }, [referencePoint]);
+    return getTop5ClosestGarages(referencePoint, garages);
+  }, [referencePoint, garages]);
 
   const selectedGarage =
     top5Garages.find((spot) => spot.id === selectedSpotId) ||
@@ -199,7 +234,7 @@ export default function FindScreen({
 
       setSearchPin(coords);
 
-      const nearestTop5 = getTop5ClosestGarages(coords, defaultGarages);
+      const nearestTop5 = getTop5ClosestGarages(coords, garages);
 
       if (nearestTop5.length > 0) {
         setSelectedSpotId(nearestTop5[0].id);
@@ -258,7 +293,7 @@ export default function FindScreen({
         clearTimeout(searchTimeoutRef.current);
       }
     };
-  }, [query]);
+  }, [query, garages]);
 
   const handleGo = async (garage) => {
     try {
@@ -334,6 +369,11 @@ export default function FindScreen({
   return (
     <SafeAreaView style={globalStyles.screen}>
       <View style={styles.screenContent}>
+        {!!lotsError && (
+          <View style={styles.banner}>
+            <Text style={styles.bannerText}>{lotsError}</Text>
+          </View>
+        )}
         <FindMap
           mapRef={mapRef}
           mapRegion={mapRegion}
@@ -388,5 +428,17 @@ export default function FindScreen({
 const styles = StyleSheet.create({
   screenContent: {
     flex: 1,
+  },
+
+  banner: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#fff3cd',
+  },
+
+  bannerText: {
+    fontSize: 13,
+    color: '#856404',
+    textAlign: 'center',
   },
 });

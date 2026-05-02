@@ -11,6 +11,7 @@ class UserOut(BaseModel):
     email: str
     role: str
     created_at: datetime
+    phone: str | None = None
 
 
 class UserRegisterIn(BaseModel):
@@ -35,6 +36,7 @@ class TokenOut(BaseModel):
 class UserUpdateIn(BaseModel):
     full_name: str | None = None
     email: EmailStr | None = None
+    phone: str | None = None
 
 
 class DriverOut(BaseModel):

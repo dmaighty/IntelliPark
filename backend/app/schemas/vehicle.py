@@ -29,3 +29,16 @@ class VehicleCreateIn(BaseModel):
     image_url: str | None = None
     parked_latitude: float | None = None
     parked_longitude: float | None = None
+
+
+class VehicleUpdateIn(BaseModel):
+    license_plate: str | None = Field(None, max_length=20)
+    make: str | None = None
+    model: str | None = None
+    color: str | None = None
+    year: str | None = None
+    title: str | None = None
+    color_id: str | None = None
+    image_url: str | None = None
+    parked_latitude: float | None = None
+    parked_longitude: float | None = None
