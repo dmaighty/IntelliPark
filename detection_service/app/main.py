@@ -8,7 +8,6 @@ from app.routes import health, prediction
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Warm-load weights so first /predict is fast; set SKIP_MODEL_WARMUP=1 to skip.
     import os
 
     if os.environ.get("SKIP_MODEL_WARMUP", "").lower() not in ("1", "true", "yes"):

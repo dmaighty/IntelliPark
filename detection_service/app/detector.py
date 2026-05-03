@@ -28,7 +28,7 @@ def get_model() -> YOLO:
         if not path.is_file():
             raise FileNotFoundError(
                 f"Model weights not found at {path}. "
-                "Place best.pt in app/models/ or set DETECTION_MODEL_PATH."
+                "Place best.pt in app/models"
             )
         _MODEL = YOLO(str(path))
     return _MODEL

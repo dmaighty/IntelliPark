@@ -11,11 +11,11 @@ router = APIRouter(tags=["prediction"])
 async def predict_frame(
     file: UploadFile | None = File(
         None,
-        description="Single frame (JPEG, PNG, WebP). Omit if using `url`.",
+        description="",
     ),
     url: str | None = Query(
         None,
-        description="HTTP(S) URL to a single image, e.g. IP camera snapshot (video.jpg).",
+        description="",
     ),
     conf: float = Query(0.25, ge=0.0, le=1.0, description="Minimum confidence"),
     imgsz: int = Query(640, ge=32, le=1280, description="Inference square size"),
@@ -31,7 +31,7 @@ async def predict_frame(
     if url_stripped and file_bytes:
         raise HTTPException(
             status_code=400,
-            detail="Provide either query parameter `url` or multipart `file`, not both.",
+            detail="",
         )
 
     if url_stripped:
