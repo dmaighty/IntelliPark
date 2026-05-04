@@ -1,0 +1,31 @@
+Meeting Type: Team-Only
+Date: 2026-04-29
+Start–End Time: 9:00pm 9:45pm
+Location/Mode: Zoom
+Attendees:
+- Reza Aghayari
+- Sarah Liang
+- Ripandeep Singh
+- Quan David Mai
+
+1) Accomplished Since Last Meeting
+- updated car cards to ability to edit and remove cars
+- added front location map tracker
+- work on the authentication
+- end points for registration and sign in
+- integrate trained prediction model with a public live cam
+
+2) Accomplished During This Meeting
+- Discuss plans for prototype demo 
+
+3) Issues / Blockers
+- database with mock data to test functions
+
+4) Action Items
+- Action: set up validation and predition tables  | Owner: Reza Aghayari | Due: May 03
+- Action: updated the find, search, find nearby garage  | Owner: Sarah Liang | Due: May 03
+- Action: endpoints for add vehicles and proflie , create database script to push mock data | Owner: Ripandeep Singh | Due: May 03
+- Action: prediction ai model to send stats to webapp | Owner: Quan David Mai | Due: May 03
+
+5) Plans / Goals for Next Meeting
+- Complete prototype demo functions

@@ -1,0 +1,30 @@
+Meeting Type: Team-Only
+Date: 2026-05-03
+Start–End Time: 9:00pm 9:45pm
+Location/Mode: Zoom
+Attendees:
+- Reza Aghayari
+- Sarah Liang
+- Ripandeep Singh
+- Quan David Mai
+
+1) Accomplished Since Last Meeting
+- set up validation and predition tables
+- updated the find, search, find nearby garage
+- endpoints for add vehicles and proflie 
+- create database script to push mock data 
+
+2) Accomplished During This Meeting
+- Finalize technical demo for protoype demostration
+
+3) Issues / Blockers
+- better accuracy needed for prediction model
+
+4) Action Items
+- Action: validation testing, github uploads, accuracy tuning | Owner: Reza Aghayari | Due: Apr 15
+- Action: frontend: added more garage details and information, added a page for LLM chatbot functionality  | Owner: Sarah Liang | Due: Apr 30
+- Action: integrate prediction model w backened | Owner: Ripandeep Singh | Due: Apr 15
+- Action: prediction ai model to have labeled spaces to align with map | Owner: Quan David Mai | Due: Apr 15
+
+5) Plans / Goals for Next Meeting
+- Perform demo
