@@ -19,12 +19,13 @@ import PersonalInfoScreen from './screens/PersonalInfoScreen';
 import ChatScreen from './screens/ChatScreen';
 import FindScreen from './screens/FindScreen';
 import AddCarScreen from './screens/AddCarScreen';
+import HistoryScreen from './screens/HistoryScreen';
 import BottomTabs from './components/BottomTabs';
 import { defaultCars } from './data/defaultCars';
+import { parkingHistory } from './data/parkingHistory';
 
 // for demo only
-import GarageDemo from "./screens/GarageDemo";
-
+import GarageDemo from './screens/GarageDemo';
 
 const { height } = Dimensions.get('window');
 const TAB_BAR_HEIGHT = height * 0.105;
@@ -55,6 +56,7 @@ export default function App() {
   const [cars, setCars] = useState(defaultCars);
   const [editingCar, setEditingCar] = useState(null);
   const [profileRefreshTrigger, setProfileRefreshTrigger] = useState(0);
+  const [history] = useState(parkingHistory);
 
   useEffect(() => {
     (async () => {
@@ -73,15 +75,18 @@ export default function App() {
   useEffect(() => {
     const loadMyVehicles = async () => {
       if (!accessToken || accessToken === DEV_MOCK_ACCESS_TOKEN) return;
+
       try {
         const rows = await getMyVehicles(accessToken);
         if (!Array.isArray(rows)) return;
+
         const mapped = rows.map(mapApiVehicleToCar);
         setCars(mapped);
       } catch (e) {
         console.log('Failed to load vehicles', e?.message || e);
       }
     };
+
     loadMyVehicles();
   }, [accessToken]);
 
@@ -94,7 +99,7 @@ export default function App() {
     'addCar',
     'editCar',
     'personalInfo',
-    'garageDemo', // demo only
+    'garageDemo',
   ].includes(screen);
 
   const handleAddCarSave = async (newCar) => {
@@ -109,6 +114,7 @@ export default function App() {
       setScreen('home');
       return;
     }
+
     try {
       const created = await createMyVehicle(accessToken, newCar);
       setCars((prev) => [...prev, mapApiVehicleToCar(created)]);
@@ -132,12 +138,15 @@ export default function App() {
       setScreen('home');
       return;
     }
+
     try {
       const row = await updateVehicle(accessToken, updatedCar.id, updatedCar);
       const mapped = mapApiVehicleToCar(row);
+
       setCars((prev) =>
         prev.map((car) => (car.id === updatedCar.id ? mapped : car))
       );
+
       setEditingCar(null);
       setScreen('home');
     } catch (e) {
@@ -257,7 +266,7 @@ export default function App() {
                   accessToken={accessToken}
                   refreshTrigger={profileRefreshTrigger}
                   onPersonalInfo={() => setScreen('personalInfo')}
-                  onGarageDemo={() => setScreen('garageDemo')} // demo only
+                  onGarageDemo={() => setScreen('garageDemo')}
                   onBack={() => setScreen('home')}
                   onSignOut={async () => {
                     await AsyncStorage.removeItem(TOKEN_KEY);
@@ -287,37 +296,30 @@ export default function App() {
               )}
 
               {screen === 'past' && (
-                <HomeScreen
-                  cars={cars}
-                  onProfilePress={() => setScreen('profile')}
-                  onFindPress={() => setScreen('find')}
-                  onChatPress={() => setScreen('chat')}
-                  onAddCarPress={() => setScreen('addCar')}
-                  onEditCarPress={handleEditCarPress}
-                  onRemoveCarPress={handleRemoveCar}
+                <HistoryScreen
+                  history={history}
                   tabBarHeight={TAB_BAR_HEIGHT}
                 />
+              )}
+
+              {screen === 'garageDemo' && (
+                <GarageDemo onBack={() => setScreen('profile')} />
               )}
 
               {screen !== 'chat' &&
                 screen !== 'addCar' &&
                 screen !== 'editCar' &&
-                screen !== 'personalInfo' && (
-                <BottomTabs
-                  activeScreen={screen}
-                  onFindPress={() => setScreen('find')}
-                  onChatPress={() => setScreen('chat')}
-                  onHomePress={() => setScreen('home')}
-                  onPastPress={() => setScreen('past')}
-                  onProfilePress={() => setScreen('profile')}
-                />
-              )}
-
-              {screen === 'garageDemo' && (
-                <GarageDemo onBack={() => setScreen('profile')}  // demo only
-                />
-              )}              
-
+                screen !== 'personalInfo' &&
+                screen !== 'garageDemo' && (
+                  <BottomTabs
+                    activeScreen={screen}
+                    onFindPress={() => setScreen('find')}
+                    onChatPress={() => setScreen('chat')}
+                    onHomePress={() => setScreen('home')}
+                    onPastPress={() => setScreen('past')}
+                    onProfilePress={() => setScreen('profile')}
+                  />
+                )}
             </>
           )}
         </>
