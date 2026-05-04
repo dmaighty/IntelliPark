@@ -6,7 +6,7 @@ Attendees:
 - Reza Aghayari
 - Sarah Liang
 - Ripandeep Singh
-- Quan David Mai
+- Quan David Mai 
 
 1) Accomplished Since Last Meeting
 - updated car cards to ability to edit and remove cars

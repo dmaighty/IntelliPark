@@ -15,7 +15,7 @@ Attendees:
 
 2) Accomplished During This Meeting
 - narrow scope of details
-
+ 
 3) Issues / Blockers
 - Database needed for all team members
 
