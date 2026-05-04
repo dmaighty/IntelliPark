@@ -1,0 +1,29 @@
+Meeting Type: Team-Only
+Date: 2026-04-22
+Start–End Time: 9:00pm 9:45pm
+Location/Mode: Zoom
+Attendees:
+- Reza Aghayari
+- Sarah Liang
+- Ripandeep Singh
+- Quan David Mai
+
+1) Accomplished Since Last Meeting
+- set up database
+- add migration files for database
+- frontend: add new car functionality
+
+2) Accomplished During This Meeting
+- narrow scope of details
+ 
+3) Issues / Blockers
+- Database needed for all team members
+
+4) Action Items
+- Action: set up postgres email in database, REST API endpoints and architecture  | Owner: Reza Aghayari | Due: Apr 29
+- Action: updated car cards to ability to edit and remove cars, added front location map tracker  | Owner: Sarah Liang | Due: Apr 29
+- Action: work on the authentication, end points for registration and sign in | Owner: Ripandeep Singh | Due: Apr 29
+- Action: integrate trained prediction model with a public live cam | Owner: Quan David Mai | Due: Apr 29
+
+5) Plans / Goals for Next Meeting
+- have more functional pages to prepare for demo
