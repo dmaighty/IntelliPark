@@ -22,7 +22,7 @@ Attendees:
 
 4) Action Items
 - Action: validation testing, github uploads, accuracy tuning | Owner: Reza Aghayari | Due: Apr 15
-- Action: frontend: added more garage details and information, added a page for LLM chatbot functionality  | Owner: Sarah Liang | Due: Apr 30
+- Action: frontend: added more garage details and information, added a page for LLM chatbot functionality, added history screen page to view past visited parking  | Owner: Sarah Liang | Due: Apr 30
 - Action: integrate prediction model w backened | Owner: Ripandeep Singh | Due: Apr 15
 - Action: prediction ai model to have labeled spaces to align with map | Owner: Quan David Mai | Due: Apr 15
 
