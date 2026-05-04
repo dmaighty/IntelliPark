@@ -18,7 +18,7 @@ def default_model_path() -> Path:
     override = os.environ.get("DETECTION_MODEL_PATH")
     if override:
         return Path(override).expanduser().resolve()
-    return Path(__file__).resolve().parent / "models" / "best.pt"
+    return Path(__file__).resolve().parent / "yolo_models" / "best.pt"
 
 
 def get_model() -> YOLO:
@@ -28,7 +28,7 @@ def get_model() -> YOLO:
         if not path.is_file():
             raise FileNotFoundError(
                 f"Model weights not found at {path}. "
-                "Place best.pt in app/models"
+                "Place best.pt in app/yolo_models"
             )
         _MODEL = YOLO(str(path))
     return _MODEL

@@ -20,6 +20,7 @@ export default function GarageInfoModal({
   userLocation,
   onClose,
   onDirections,
+  onGarageLotPage,
 }) {
   const [selectedLevelId, setSelectedLevelId] = useState(null);
 
@@ -46,13 +47,6 @@ export default function GarageInfoModal({
       selectedLevel
         ? `${selectedLevel.openSpots} spots open on ${selectedLevel.name}.`
         : `${garage?.spotsOpen ?? 0} total spots open.`
-    );
-  };
-
-  const handleGarageLotPage = () => {
-    Alert.alert(
-      'Garage lot page',
-      'Connect this button to your real garage details page or API later.'
     );
   };
 
@@ -115,7 +109,7 @@ export default function GarageInfoModal({
             <TouchableOpacity
               style={styles.secondaryWideButton}
               activeOpacity={0.85}
-              onPress={handleGarageLotPage}
+              onPress={() => onGarageLotPage?.()}
             >
               <Text style={styles.secondaryButtonText}>Garage lot page</Text>
             </TouchableOpacity>

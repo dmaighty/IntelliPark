@@ -15,6 +15,7 @@ import { getParkingLots } from '../api/parking_lots';
 import FindMap from '../components/find/FindMap';
 import FindDrawer from '../components/find/FindDrawer';
 import GarageInfoModal from '../components/find/GarageInfoModal';
+import GarageLotLiveScreen from '../components/find/GarageLotLiveScreen';
 import {
   DEFAULT_COORDS,
   getTop5ClosestGarages,
@@ -47,6 +48,8 @@ export default function FindScreen({
   const [lotsError, setLotsError] = useState('');
   const [selectedSpotId, setSelectedSpotId] = useState(null);
   const [infoGarage, setInfoGarage] = useState(null);
+  const [garageLotLiveVisible, setGarageLotLiveVisible] = useState(false);
+  const [liveViewGarage, setLiveViewGarage] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -420,6 +423,20 @@ export default function FindScreen({
         userLocation={userLocation}
         onClose={() => setInfoGarage(null)}
         onDirections={handleGo}
+        onGarageLotPage={() => {
+          setLiveViewGarage(infoGarage);
+          setInfoGarage(null);
+          setGarageLotLiveVisible(true);
+        }}
+      />
+
+      <GarageLotLiveScreen
+        visible={garageLotLiveVisible}
+        garage={liveViewGarage}
+        onClose={() => {
+          setGarageLotLiveVisible(false);
+          setLiveViewGarage(null);
+        }}
       />
     </SafeAreaView>
   );
