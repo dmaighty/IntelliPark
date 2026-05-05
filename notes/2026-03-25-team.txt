@@ -24,7 +24,7 @@ Attendees:
 
 4) Action Items
 - Action: Start database | Owner: Reza Aghayari | Due: Mar 18
-- Action: Continue adding to homepage and profile screens | Owner: Sarah Liang | Due: Apr 30
+- Action: Continue adding to homepage and profile screens | Owner: Sarah Liang | Due: Mar 18
 - Action: Set up React Native Project and barebone backend | Owner: Ripandeep Singh | Due: Mar 18
 - Action: Set up model dataset | Owner: Quan David Mai | Due: Mar 18
 
