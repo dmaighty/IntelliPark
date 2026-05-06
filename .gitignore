@@ -4,3 +4,5 @@ package-lock.json
 node_modules
 __pycache__
 .env
+/detection_service/.venv
+/detection_service/app/yolo_models

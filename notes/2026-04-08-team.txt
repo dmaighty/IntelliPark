@@ -26,7 +26,7 @@ Attendees:
 
 4) Action Items
 - Action: Tests for backend and see how to add information to database | Owner: Reza Aghayari | Due: Apr 15
-- Action: Continue adding to maps and homescreen | Owner: Sarah Liang | Due: Apr 15
+- Action: Continue adding to maps and homescreen | Owner: Sarah Liang | Due: Apr 30
 - Action: Add authentication and connect to frontend. Add to database | Owner: Ripandeep Singh | Due: Apr 15
 - Action: Hypertuning the Parking Detection model | Owner: Quan David Mai | Due: Apr 15
 
