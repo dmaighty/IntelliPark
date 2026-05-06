@@ -7,6 +7,7 @@ from app.routes import (
     health,
     lots,
     parking,
+    parking_chat,
     prediction,
     users,
     vehicle,
@@ -24,6 +25,7 @@ app.include_router(vehicle.router, prefix="/api")
 
 app.include_router(garage_demo.router, prefix ="/api") # demo only
 app.include_router(prediction.router, prefix="/api")
+app.include_router(parking_chat.router, prefix="/api")
 
 @app.get("/")
 def root():

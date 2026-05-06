@@ -10,9 +10,9 @@ import {
   Keyboard,
   Platform,
   FlatList,
-  Image,
 } from 'react-native';
 import { globalStyles, spacing, radius, shadow } from '../styles/global';
+import { sendParkingChat } from '../api/chat';
 
 export default function ChatScreen({ onClose }) {
   const sheetAnim = useRef(new Animated.Value(0)).current;
@@ -21,6 +21,7 @@ export default function ChatScreen({ onClose }) {
 
   const [message, setMessage] = useState('');
   const [inputHeight, setInputHeight] = useState(28);
+  const [isSending, setIsSending] = useState(false);
   const [messages, setMessages] = useState([
     {
       id: '1',
@@ -28,6 +29,52 @@ export default function ChatScreen({ onClose }) {
       text: 'Hi! How can I help you today?',
     },
   ]);
+
+  const renderInlineMarkdown = (text, isUser) => {
+    const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
+    return parts.map((part, idx) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return (
+          <Text
+            key={`md-bold-${idx}`}
+            style={[styles.messageText, isUser && styles.userMessageText, styles.boldText]}
+          >
+            {part.slice(2, -2)}
+          </Text>
+        );
+      }
+      if (part.startsWith('`') && part.endsWith('`')) {
+        return (
+          <Text
+            key={`md-code-${idx}`}
+            style={[styles.messageText, isUser && styles.userMessageText, styles.codeText]}
+          >
+            {part.slice(1, -1)}
+          </Text>
+        );
+      }
+      return (
+        <Text key={`md-plain-${idx}`} style={[styles.messageText, isUser && styles.userMessageText]}>
+          {part}
+        </Text>
+      );
+    });
+  };
+
+  const renderMarkdownText = (text, isUser) => {
+    const lines = text.split('\n');
+    return lines.map((line, idx) => {
+      const isBullet = line.startsWith('- ') || line.startsWith('* ');
+      const content = isBullet ? line.slice(2) : line;
+      return (
+        <Text key={`line-${idx}`} style={[styles.messageText, isUser && styles.userMessageText]}>
+          {isBullet ? '\u2022 ' : ''}
+          {renderInlineMarkdown(content, isUser)}
+          {idx < lines.length - 1 ? '\n' : ''}
+        </Text>
+      );
+    });
+  };
 
   useEffect(() => {
     const showEvent =
@@ -85,25 +132,45 @@ export default function ChatScreen({ onClose }) {
 
   const handleSend = async () => {
     const trimmed = message.trim();
-    if (!trimmed) return;
+    if (!trimmed || isSending) return;
 
     const userMessage = {
       id: Date.now().toString(),
       role: 'user',
       text: trimmed,
     };
+    const nextMessages = [...messages, userMessage];
 
-    setMessages((prev) => [...prev, userMessage]);
+    setMessages(nextMessages);
     setMessage('');
     setInputHeight(28);
+    setIsSending(true);
 
-    const botReply = {
-      id: `${Date.now()}-bot`,
-      role: 'assistant',
-      text: `You said: ${trimmed}`,
-    };
-
-    setMessages((prev) => [...prev, botReply]);
+    try {
+      const history = nextMessages.slice(0, -1).map((item) => ({
+        role: item.role,
+        text: item.text,
+      }));
+      const data = await sendParkingChat({
+        message: trimmed,
+        history,
+      });
+      const botReply = {
+        id: `${Date.now()}-bot`,
+        role: 'assistant',
+        text: data.reply || 'Sorry, I could not generate a response.',
+      };
+      setMessages((prev) => [...prev, botReply]);
+    } catch (error) {
+      const errorReply = {
+        id: `${Date.now()}-error`,
+        role: 'assistant',
+        text: `Sorry, chat failed: ${error.message}`,
+      };
+      setMessages((prev) => [...prev, errorReply]);
+    } finally {
+      setIsSending(false);
+    }
   };
 
   return (
@@ -135,7 +202,7 @@ export default function ChatScreen({ onClose }) {
                   item.role === 'user' && styles.userMessageText,
                 ]}
               >
-                {item.text}
+                {renderMarkdownText(item.text, item.role === 'user')}
               </Text>
             </View>
           )}
@@ -177,6 +244,7 @@ export default function ChatScreen({ onClose }) {
                 onSubmitEditing={handleSend}
                 blurOnSubmit={false}
                 multiline
+                editable={!isSending}
                 scrollEnabled={inputHeight >= 110}
                 returnKeyType="send"
               />
@@ -187,15 +255,14 @@ export default function ChatScreen({ onClose }) {
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={styles.footerAction}
+                  style={[styles.footerAction, styles.sendAction, isSending && styles.sendActionDisabled]}
                   activeOpacity={0.8}
                   onPress={handleSend}
+                  disabled={isSending}
                 >
-                  <Image
-                    source={require('../assets/microphone.png')}
-                    style={styles.footerIcon}
-                    resizeMode="contain"
-                  />
+                  <Text style={styles.sendActionText}>
+                    {isSending ? '...' : 'Send'}
+                  </Text>
                 </TouchableOpacity>
               </View>
             </Animated.View>
@@ -269,6 +336,14 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
 
+  boldText: {
+    fontWeight: '700',
+  },
+
+  codeText: {
+    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
+  },
+
   chatSheet: {
     position: 'absolute',
     left: 0,
@@ -329,8 +404,19 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 
-  footerIcon: {
-    width: 18,
-    height: 18,
+  sendAction: {
+    width: 'auto',
+    paddingHorizontal: 12,
+    backgroundColor: '#111',
+  },
+
+  sendActionDisabled: {
+    opacity: 0.6,
+  },
+
+  sendActionText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '700',
   },
 });
