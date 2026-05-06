@@ -54,7 +54,7 @@ async def predict_frame(
     else:
         raise HTTPException(
             status_code=400,
-            detail="Provide either `url` (query) or non-empty multipart `file`.",
+            detail="",
         )
 
     try:

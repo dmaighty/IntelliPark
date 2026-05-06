@@ -20,6 +20,7 @@ export default function GarageInfoModal({
   userLocation,
   onClose,
   onDirections,
+  onGarageLotPage,
 }) {
   const [selectedLevelId, setSelectedLevelId] = useState(null);
 
@@ -115,7 +116,7 @@ export default function GarageInfoModal({
             <TouchableOpacity
               style={styles.secondaryWideButton}
               activeOpacity={0.85}
-              onPress={handleGarageLotPage}
+              onPress={() => onGarageLotPage?.()}
             >
               <Text style={styles.secondaryButtonText}>Garage lot page</Text>
             </TouchableOpacity>
