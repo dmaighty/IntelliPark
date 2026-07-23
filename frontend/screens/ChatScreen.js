@@ -11,6 +11,7 @@ import {
   Platform,
   FlatList,
 } from 'react-native';
+import * as Location from 'expo-location';
 import { globalStyles, spacing, radius, shadow } from '../styles/global';
 import { sendParkingChat } from '../api/chat';
 
@@ -22,6 +23,7 @@ export default function ChatScreen({ onClose }) {
   const [message, setMessage] = useState('');
   const [inputHeight, setInputHeight] = useState(28);
   const [isSending, setIsSending] = useState(false);
+  const [locationGranted, setLocationGranted] = useState(false);
   const [messages, setMessages] = useState([
     {
       id: '1',
@@ -125,6 +127,45 @@ export default function ChatScreen({ onClose }) {
     };
   }, [sheetAnim, keyboardOffset]);
 
+  useEffect(() => {
+    let mounted = true;
+
+    const loadLocation = async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (!mounted) return;
+        const granted = status === 'granted';
+        setLocationGranted(granted);
+      } catch {
+        if (mounted) setLocationGranted(false);
+      }
+    };
+
+    loadLocation();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  async function coordsToUserPlace(latitude, longitude) {
+    try {
+      const results = await Location.reverseGeocodeAsync({ latitude, longitude });
+      const r = results?.[0];
+      if (!r) return null;
+      const city = r.city || r.district || r.subregion || null;
+      const region = r.region || null;
+      const country = r.country || null;
+      if (!city && !region && !country) return null;
+      return {
+        ...(city ? { city } : {}),
+        ...(region ? { region } : {}),
+        ...(country ? { country } : {}),
+      };
+    } catch {
+      return null;
+    }
+  }
+
   const composerBoxMinHeight = sheetAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [72, 98],
@@ -147,6 +188,25 @@ export default function ChatScreen({ onClose }) {
     setIsSending(true);
 
     try {
+      let userPlace = null;
+      let locationFallback = null;
+      if (locationGranted) {
+        try {
+          const loc = await Location.getCurrentPositionAsync({});
+          const { latitude, longitude } = loc.coords;
+          userPlace = await coordsToUserPlace(latitude, longitude);
+          if (!userPlace) {
+            locationFallback = {
+              latitude,
+              longitude,
+              accuracy: loc.coords.accuracy ?? undefined,
+            };
+          }
+        } catch {
+          /* no location context */
+        }
+      }
+
       const history = nextMessages.slice(0, -1).map((item) => ({
         role: item.role,
         text: item.text,
@@ -154,6 +214,8 @@ export default function ChatScreen({ onClose }) {
       const data = await sendParkingChat({
         message: trimmed,
         history,
+        userPlace,
+        userLocation: locationFallback,
       });
       const botReply = {
         id: `${Date.now()}-bot`,

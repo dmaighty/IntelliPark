@@ -10,11 +10,50 @@ function formatError(body) {
   return 'Request failed';
 }
 
-export async function sendParkingChat({ message, history = [] }) {
+function hasUserPlace(userPlace) {
+  if (!userPlace || typeof userPlace !== 'object') return false;
+  return ['city', 'region', 'country'].some(
+    (k) => typeof userPlace[k] === 'string' && userPlace[k].trim().length > 0
+  );
+}
+
+export async function sendParkingChat({
+  message,
+  history = [],
+  userPlace = null,
+  userLocation = null,
+}) {
+  const payload = { message, history };
+
+  if (hasUserPlace(userPlace)) {
+    payload.user_place = {};
+    if (typeof userPlace.city === 'string' && userPlace.city.trim()) {
+      payload.user_place.city = userPlace.city.trim();
+    }
+    if (typeof userPlace.region === 'string' && userPlace.region.trim()) {
+      payload.user_place.region = userPlace.region.trim();
+    }
+    if (typeof userPlace.country === 'string' && userPlace.country.trim()) {
+      payload.user_place.country = userPlace.country.trim();
+    }
+  } else if (
+    userLocation &&
+    typeof userLocation.latitude === 'number' &&
+    typeof userLocation.longitude === 'number'
+  ) {
+    payload.user_location = {
+      latitude: userLocation.latitude,
+      longitude: userLocation.longitude,
+    };
+    if (userLocation.accuracy != null && Number.isFinite(userLocation.accuracy)) {
+      payload.user_location.accuracy = userLocation.accuracy;
+    }
+  }
+
   const res = await fetch(`${API_BASE}/parking-chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message, history }),
+    body: JSON.stringify(payload),
   });
 
   const body = await res.json().catch(() => ({}));
