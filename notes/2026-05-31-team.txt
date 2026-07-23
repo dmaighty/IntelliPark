@@ -1,0 +1,30 @@
+Meeting Type: Team-Only
+Date: 2026-05-31
+Start–End Time: 9:00pm 9:45pm
+Location/Mode: Zoom
+Attendees:
+- Reza Aghayari
+- Sarah Liang 
+- Ripandeep Singh
+- Quan David Mai
+
+1) Accomplished Since Last Meeting
+- prediction model integrated with backend
+- added page for chat functionality
+- history screen page
+- validation testing
+
+2) Accomplished During This Meeting
+- Plan for remaining weeks of project
+
+3) Issues / Blockers
+- Data needed for prediction model
+
+4) Action Items
+- Action: create data for prediction model | Owner: Reza Aghayari | Due: Jun 07
+- Action: frontend: start web pages for admin access | Owner: Sarah Liang | Due: Jun 07
+- Action: integrate prediction model and historic data with backend | Owner: Ripandeep Singh | Due: Jun 07
+- Action: improve parking detection ai by further training and tuning | Owner: Quan David Mai | Due: Jun 07
+
+5) Plans / Goals for Next Meeting
+- 

@@ -6,9 +6,6 @@ import {
   DEFAULT_COORDS,
   FOCUSED_LAT_DELTA,
   FOCUSED_LNG_DELTA,
-  USER_VIEW_LAT_DELTA,
-  USER_VIEW_LNG_DELTA,
-  USER_VIEW_ZOOM,
 } from '../utils/mapUtils';
 
 export default function useHomeMap({
@@ -28,19 +25,28 @@ export default function useHomeMap({
     setMapRegion(buildRegion(firstMapCoordinate || DEFAULT_COORDS));
   }, [firstMapCoordinate]);
 
-  const focusMapOnCar = useCallback(
-    (car, animated = true) => {
-      if (!car?.parkedLocation || !mapRef.current || !mapReady) return;
+  const focusMapOnCoordinate = useCallback(
+    (
+      coordinate,
+      {
+        offset = CAR_CENTER_OFFSET,
+        latitudeDelta = FOCUSED_LAT_DELTA,
+        longitudeDelta = FOCUSED_LNG_DELTA,
+        zoom = CAR_VIEW_ZOOM,
+        animated = true,
+      } = {}
+    ) => {
+      if (!coordinate || !mapRef.current || !mapReady) return;
 
       const centeredCoordinate = {
-        latitude: car.parkedLocation.latitude + CAR_CENTER_OFFSET,
-        longitude: car.parkedLocation.longitude,
+        latitude: coordinate.latitude + offset,
+        longitude: coordinate.longitude,
       };
 
       const nextRegion = buildRegion(
         centeredCoordinate,
-        FOCUSED_LAT_DELTA,
-        FOCUSED_LNG_DELTA
+        latitudeDelta,
+        longitudeDelta
       );
 
       setMapRegion(nextRegion);
@@ -50,7 +56,7 @@ export default function useHomeMap({
           mapRef.current?.animateCamera(
             {
               center: centeredCoordinate,
-              zoom: CAR_VIEW_ZOOM,
+              zoom,
             },
             { duration: animated ? 300 : 0 }
           );
@@ -58,6 +64,21 @@ export default function useHomeMap({
       });
     },
     [mapReady]
+  );
+
+  const focusMapOnCar = useCallback(
+    (car, animated = true) => {
+      if (!car?.parkedLocation) return;
+
+      focusMapOnCoordinate(car.parkedLocation, {
+        offset: CAR_CENTER_OFFSET,
+        latitudeDelta: FOCUSED_LAT_DELTA,
+        longitudeDelta: FOCUSED_LNG_DELTA,
+        zoom: CAR_VIEW_ZOOM,
+        animated,
+      });
+    },
+    [focusMapOnCoordinate]
   );
 
   useEffect(() => {
@@ -95,24 +116,16 @@ export default function useHomeMap({
   }, [selectedCar, focusMapOnCar]);
 
   const handleFindUser = useCallback(() => {
-    if (!userLocation || !mapRef.current) return;
+    if (!userLocation) return;
 
-    const nextRegion = buildRegion(
-      userLocation,
-      USER_VIEW_LAT_DELTA,
-      USER_VIEW_LNG_DELTA
-    );
-
-    setMapRegion(nextRegion);
-
-    mapRef.current.animateCamera(
-      {
-        center: userLocation,
-        zoom: USER_VIEW_ZOOM,
-      },
-      { duration: 300 }
-    );
-  }, [userLocation]);
+    focusMapOnCoordinate(userLocation, {
+      offset: CAR_CENTER_OFFSET,
+      latitudeDelta: FOCUSED_LAT_DELTA,
+      longitudeDelta: FOCUSED_LNG_DELTA,
+      zoom: CAR_VIEW_ZOOM,
+      animated: true,
+    });
+  }, [userLocation, focusMapOnCoordinate]);
 
   return {
     mapRef,
