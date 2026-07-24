@@ -14,76 +14,15 @@ import {
 import { getLiveFramePredictions } from '../../api/prediction';
 import { spacing, radius, shadow } from '../../styles/global';
 
-/** Same snapshot the backend sends to the detection service for now. */
-const LIVE_FRAME_URI =
-  'http://170.249.152.2:8080/cgi-bin/viewer/video.jpg';
-
 const { width: WINDOW_WIDTH } = Dimensions.get('window');
 const H_PADDING = spacing.screen;
 
 const AUTO_REFRESH_MS = 20_000;
 
-function boxBorderColor(className) {
-  const n = (className || '').toLowerCase();
-  if (n.includes('occupied')) return 'rgba(255, 59, 48, 0.95)';
-  if (n.includes('empty')) return 'rgba(52, 199, 89, 0.95)';
-  return 'rgba(0, 122, 255, 0.9)';
-}
-
-/**
- * Boxes are in the same coordinate system as prediction.image_width / image_height.
- * displayW/displayH are the on-screen size chosen from that aspect ratio.
- */
-function DetectionOverlay({ payload, displayW, displayH }) {
-  const iw = payload?.image_width;
-  const ih = payload?.image_height;
-  const detections = payload?.detections;
-  if (!iw || !ih || !displayW || !displayH || !detections?.length) {
-    return null;
-  }
-
-  return (
-    <View
-      style={[styles.overlay, { width: displayW, height: displayH }]}
-      pointerEvents="none"
-    >
-      {detections.map((d, index) => {
-        const { x1, y1, x2, y2 } = d.box || {};
-        if ([x1, y1, x2, y2].some((v) => v == null)) return null;
-        const left = (x1 / iw) * displayW;
-        const top = (y1 / ih) * displayH;
-        const w = ((x2 - x1) / iw) * displayW;
-        const h = ((y2 - y1) / ih) * displayH;
-        return (
-          <View
-            key={`${d.class_id}-${index}`}
-            style={[
-              styles.detectionBox,
-              {
-                left,
-                top,
-                width: Math.max(w, 1),
-                height: Math.max(h, 1),
-                borderColor: boxBorderColor(d.class_name),
-              },
-            ]}
-          />
-        );
-      })}
-    </View>
-  );
-}
-
-function frameImageUri(cacheBust) {
-  const sep = LIVE_FRAME_URI.includes('?') ? '&' : '?';
-  return `${LIVE_FRAME_URI}${sep}cb=${cacheBust}`;
-}
-
 export default function GarageLotLiveScreen({ visible, garage, onClose }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [payload, setPayload] = useState(null);
-  const [frameCacheBust, setFrameCacheBust] = useState(() => Date.now());
   const loadInFlight = useRef(false);
 
   const load = useCallback(async () => {
@@ -94,7 +33,6 @@ export default function GarageLotLiveScreen({ visible, garage, onClose }) {
     try {
       const data = await getLiveFramePredictions({ conf: 0.25, imgsz: 640 });
       setPayload(data);
-      setFrameCacheBust(Date.now());
     } catch (e) {
       setPayload(null);
       setError(e.message || 'Could not load predictions');
@@ -119,7 +57,11 @@ export default function GarageLotLiveScreen({ visible, garage, onClose }) {
   const apiW = Number(payload?.image_width);
   const apiH = Number(payload?.image_height);
   const hasApiDimensions =
-    Number.isFinite(apiW) && Number.isFinite(apiH) && apiW > 0 && apiH > 0;
+    Number.isFinite(apiW) &&
+    Number.isFinite(apiH) &&
+    apiW > 0 &&
+    apiH > 0 &&
+    !!payload?.annotated_image;
 
   const displayW = Math.max(WINDOW_WIDTH - 2 * H_PADDING, 1);
   const displayH = hasApiDimensions ? displayW * (apiH / apiW) : 0;
@@ -153,8 +95,8 @@ export default function GarageLotLiveScreen({ visible, garage, onClose }) {
           showsVerticalScrollIndicator={false}
         >
           <Text style={styles.hint}>
-            Live frame (demo). Refreshes every {AUTO_REFRESH_MS / 1000}s. Boxes match
-            the latest API response.
+            Live frame (demo). Refreshes every {AUTO_REFRESH_MS / 1000}s. Spot
+            boxes are drawn by the detection service.
           </Text>
 
           <View style={[styles.legend, shadow.soft]}>
@@ -184,15 +126,9 @@ export default function GarageLotLiveScreen({ visible, garage, onClose }) {
           {hasApiDimensions && displayH > 0 ? (
             <View style={[styles.frameWrap, { width: displayW }]}>
               <Image
-                key={frameCacheBust}
-                source={{ uri: frameImageUri(frameCacheBust) }}
+                source={{ uri: payload.annotated_image }}
                 style={{ width: displayW, height: displayH }}
                 resizeMode="stretch"
-              />
-              <DetectionOverlay
-                payload={payload}
-                displayW={displayW}
-                displayH={displayH}
               />
             </View>
           ) : (
@@ -204,11 +140,19 @@ export default function GarageLotLiveScreen({ visible, garage, onClose }) {
             )
           )}
 
-          {!!payload?.detections?.length && (
+          {typeof payload?.occupied === 'number' &&
+          typeof payload?.empty === 'number' ? (
             <Text style={styles.countText}>
-              {payload.detections.length} detection
-              {payload.detections.length === 1 ? '' : 's'}
+              {payload.occupied} occupied · {payload.empty} empty
+              {payload.total_spots ? ` (of ${payload.total_spots} spots)` : ''}
             </Text>
+          ) : (
+            !!payload?.detections?.length && (
+              <Text style={styles.countText}>
+                {payload.detections.length} detection
+                {payload.detections.length === 1 ? '' : 's'}
+              </Text>
+            )
           )}
         </ScrollView>
       </SafeAreaView>
@@ -328,16 +272,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.medium,
     overflow: 'hidden',
     ...shadow.soft,
-  },
-  overlay: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-  },
-  detectionBox: {
-    position: 'absolute',
-    borderWidth: 2,
-    backgroundColor: 'rgba(255,255,255,0.06)',
   },
   countText: {
     marginTop: 10,

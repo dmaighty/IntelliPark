@@ -4,6 +4,11 @@ python-multipart>=0.0.6
 httpx>=0.26.0
 
 ultralytics>=8.1.0
+torch>=2.0.0
 pillow>=10.0.0
 numpy>=1.24.0,<2
 opencv-python-headless>=4.8.0,<4.10
+
+# Only needed for the hybrid_yolo/ training & data-prep scripts (kaggle_train.py,
+# prepare_data.py), not for the hybrid-predict route itself.
+kagglehub==1.0.2

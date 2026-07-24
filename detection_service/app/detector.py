@@ -7,11 +7,24 @@ from io import BytesIO
 from pathlib import Path
 from typing import Any
 
+import cv2
 import numpy as np
 from PIL import Image
 from ultralytics import YOLO
 
+from app.image_utils import encode_jpeg_data_uri
+
 _MODEL: YOLO | None = None
+
+
+def _detection_color(class_name: str) -> tuple[int, int, int]:
+    """BGR color for a detection box, keyed off class name (e.g. "space-occupied")."""
+    name = (class_name or "").lower()
+    if "occupied" in name:
+        return (0, 0, 255)  # red
+    if "empty" in name:
+        return (0, 255, 0)  # green
+    return (255, 122, 0)  # blue-ish, for anything else (e.g. plain "car")
 
 
 def default_model_path() -> Path:
@@ -32,6 +45,21 @@ def get_model() -> YOLO:
             )
         _MODEL = YOLO(str(path))
     return _MODEL
+
+
+def annotate_detections(frame_bgr: np.ndarray, detections: list[dict[str, Any]]) -> np.ndarray:
+    """Draw each detection's box + label on the frame.
+    Expects (and returns) a BGR frame, per OpenCV convention."""
+    out = frame_bgr.copy()
+    for d in detections:
+        box = d["box"]
+        x1, y1, x2, y2 = box["x1"], box["y1"], box["x2"], box["y2"]
+        color = _detection_color(d["class_name"])
+        label = f"{d['class_name']} {d['confidence']:.2f}"
+        cv2.rectangle(out, (x1, y1), (x2, y2), color, 2)
+        cv2.putText(out, label, (x1, max(y1 - 6, 0)),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+    return out
 
 
 def predict_from_bytes(
@@ -78,8 +106,13 @@ def predict_from_bytes(
                 }
             )
 
+    frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+    annotated_bgr = annotate_detections(frame_bgr, detections)
+    annotated_image = encode_jpeg_data_uri(annotated_bgr)
+
     return {
         "detections": detections,
         "image_width": width,
         "image_height": height,
+        "annotated_image": annotated_image,
     }

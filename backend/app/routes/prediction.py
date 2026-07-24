@@ -19,6 +19,11 @@ DETECTION_SERVICE_URL = os.environ.get(
     "http://127.0.0.1:8001",
 ).rstrip("/")
 
+DETECTION_PREDICT_PATH = os.environ.get(
+    "DETECTION_PREDICT_PATH",
+    "/api/hybrid-predict",
+)
+
 router = APIRouter(prefix="/prediction", tags=["prediction"])
 
 
@@ -54,9 +59,10 @@ async def predict_live_frame(
 ):
     """
     Fetch one snapshot from the hardcoded camera URL and run detection via the
-    detection service. Configure base URL with ``DETECTION_SERVICE_URL``.
+    detection service. Configure base URL with ``DETECTION_SERVICE_URL`` and
+    which endpoint to hit with ``DETECTION_PREDICT_PATH``.
     """
-    predict_url = f"{DETECTION_SERVICE_URL}/api/predict"
+    predict_url = f"{DETECTION_SERVICE_URL}{DETECTION_PREDICT_PATH}"
     params = {"url": HARDCODED_FRAME_URL, "conf": conf, "imgsz": imgsz}
 
     try:
