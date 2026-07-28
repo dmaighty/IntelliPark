@@ -19,6 +19,7 @@ import PersonalInfoScreen from './screens/PersonalInfoScreen';
 import ChatScreen from './screens/ChatScreen';
 import FindScreen from './screens/FindScreen';
 import AddCarScreen from './screens/AddCarScreen';
+import MyVehiclesScreen from './screens/MyVehiclesScreen';
 import HistoryScreen from './screens/HistoryScreen';
 import BottomTabs from './components/BottomTabs';
 import { defaultCars } from './data/defaultCars';
@@ -55,6 +56,7 @@ export default function App() {
   const [sessionReady, setSessionReady] = useState(false);
   const [cars, setCars] = useState(defaultCars);
   const [editingCar, setEditingCar] = useState(null);
+  const [vehicleFormReturnScreen, setVehicleFormReturnScreen] = useState('home');
   const [profileRefreshTrigger, setProfileRefreshTrigger] = useState(0);
   const [history] = useState(parkingHistory);
 
@@ -96,11 +98,18 @@ export default function App() {
     'chat',
     'past',
     'profile',
+    'myVehicles',
     'addCar',
     'editCar',
     'personalInfo',
     'garageDemo',
   ].includes(screen);
+
+  const leaveVehicleForm = (target = vehicleFormReturnScreen) => {
+    setEditingCar(null);
+    setVehicleFormReturnScreen('home');
+    setScreen(target);
+  };
 
   const handleAddCarSave = async (newCar) => {
     if (!accessToken || accessToken === DEV_MOCK_ACCESS_TOKEN) {
@@ -111,20 +120,21 @@ export default function App() {
           ...newCar,
         },
       ]);
-      setScreen('home');
+      leaveVehicleForm();
       return;
     }
 
     try {
       const created = await createMyVehicle(accessToken, newCar);
       setCars((prev) => [...prev, mapApiVehicleToCar(created)]);
-      setScreen('home');
+      leaveVehicleForm();
     } catch (e) {
       Alert.alert('Could not add vehicle', e.message || 'Unknown error');
     }
   };
 
-  const handleEditCarPress = (car) => {
+  const handleEditCarPress = (car, returnScreen = 'home') => {
+    setVehicleFormReturnScreen(returnScreen);
     setEditingCar(car);
     setScreen('editCar');
   };
@@ -134,8 +144,7 @@ export default function App() {
       setCars((prev) =>
         prev.map((car) => (car.id === updatedCar.id ? updatedCar : car))
       );
-      setEditingCar(null);
-      setScreen('home');
+      leaveVehicleForm();
       return;
     }
 
@@ -147,8 +156,7 @@ export default function App() {
         prev.map((car) => (car.id === updatedCar.id ? mapped : car))
       );
 
-      setEditingCar(null);
-      setScreen('home');
+      leaveVehicleForm();
     } catch (e) {
       Alert.alert('Could not save vehicle', e.message || 'Unknown error');
     }
@@ -236,8 +244,11 @@ export default function App() {
                   onProfilePress={() => setScreen('profile')}
                   onFindPress={() => setScreen('find')}
                   onChatPress={() => setScreen('chat')}
-                  onAddCarPress={() => setScreen('addCar')}
-                  onEditCarPress={handleEditCarPress}
+                  onAddCarPress={() => {
+                    setVehicleFormReturnScreen('home');
+                    setScreen('addCar');
+                  }}
+                  onEditCarPress={(car) => handleEditCarPress(car, 'home')}
                   onRemoveCarPress={handleRemoveCar}
                   tabBarHeight={TAB_BAR_HEIGHT}
                 />
@@ -245,7 +256,7 @@ export default function App() {
 
               {screen === 'addCar' && (
                 <AddCarScreen
-                  onBack={() => setScreen('home')}
+                  onBack={() => leaveVehicleForm()}
                   onSave={handleAddCarSave}
                 />
               )}
@@ -253,10 +264,7 @@ export default function App() {
               {screen === 'editCar' && (
                 <AddCarScreen
                   initialCar={editingCar}
-                  onBack={() => {
-                    setEditingCar(null);
-                    setScreen('home');
-                  }}
+                  onBack={() => leaveVehicleForm()}
                   onSave={handleEditCarSave}
                 />
               )}
@@ -266,6 +274,7 @@ export default function App() {
                   accessToken={accessToken}
                   refreshTrigger={profileRefreshTrigger}
                   onPersonalInfo={() => setScreen('personalInfo')}
+                  onMyVehicles={() => setScreen('myVehicles')}
                   onGarageDemo={() => setScreen('garageDemo')}
                   onBack={() => setScreen('home')}
                   onSignOut={async () => {
@@ -273,6 +282,19 @@ export default function App() {
                     setAccessToken(null);
                     setScreen('welcome');
                   }}
+                />
+              )}
+
+              {screen === 'myVehicles' && (
+                <MyVehiclesScreen
+                  cars={cars}
+                  onBack={() => setScreen('profile')}
+                  onAddCar={() => {
+                    setVehicleFormReturnScreen('myVehicles');
+                    setScreen('addCar');
+                  }}
+                  onEditCar={(car) => handleEditCarPress(car, 'myVehicles')}
+                  onRemoveCar={handleRemoveCar}
                 />
               )}
 
@@ -310,6 +332,7 @@ export default function App() {
                 screen !== 'addCar' &&
                 screen !== 'editCar' &&
                 screen !== 'personalInfo' &&
+                screen !== 'myVehicles' &&
                 screen !== 'garageDemo' && (
                   <BottomTabs
                     activeScreen={screen}

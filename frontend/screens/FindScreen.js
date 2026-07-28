@@ -1,4 +1,10 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   SafeAreaView,
   View,
@@ -18,7 +24,7 @@ import GarageInfoModal from '../components/find/GarageInfoModal';
 import GarageLotLiveScreen from '../components/find/GarageLotLiveScreen';
 import {
   DEFAULT_COORDS,
-  getTop5ClosestGarages,
+  sortGaragesByDistance,
   getOffsetRegion,
   buildDirectionsUrl,
   mapParkingLotApiToGarage,
@@ -59,14 +65,9 @@ export default function FindScreen({
       try {
         const rows = await getParkingLots();
         if (cancelled) return;
-        const mapped = rows
-          .filter(
-            (r) =>
-              r != null &&
-              r.latitude != null &&
-              r.longitude != null
-          )
-          .map(mapParkingLotApiToGarage);
+        // Show every garage from the DB; mapParkingLotApiToGarage falls back
+        // to DEFAULT_COORDS for any lot missing lat/lon instead of dropping it.
+        const mapped = rows.filter((r) => r != null).map(mapParkingLotApiToGarage);
         setGarages(mapped);
       } catch (e) {
         if (!cancelled) {
@@ -141,20 +142,20 @@ export default function FindScreen({
 
   const referencePoint = searchPin || userLocation || carLocation || DEFAULT_COORDS;
 
-  const top5Garages = useMemo(() => {
-    return getTop5ClosestGarages(referencePoint, garages);
+  const sortedGarages = useMemo(() => {
+    return sortGaragesByDistance(referencePoint, garages);
   }, [referencePoint, garages]);
 
   const selectedGarage =
-    top5Garages.find((spot) => spot.id === selectedSpotId) ||
-    top5Garages[0] ||
+    sortedGarages.find((spot) => spot.id === selectedSpotId) ||
+    sortedGarages[0] ||
     null;
 
   useEffect(() => {
-    if (top5Garages.length > 0 && !top5Garages.some((g) => g.id === selectedSpotId)) {
-      setSelectedSpotId(top5Garages[0].id);
+    if (sortedGarages.length > 0 && !sortedGarages.some((g) => g.id === selectedSpotId)) {
+      setSelectedSpotId(sortedGarages[0].id);
     }
-  }, [top5Garages, selectedSpotId]);
+  }, [sortedGarages, selectedSpotId]);
 
   const animateDrawer = (toValue) => {
     currentOffset.current = toValue;
@@ -237,19 +238,19 @@ export default function FindScreen({
 
       setSearchPin(coords);
 
-      const nearestTop5 = getTop5ClosestGarages(coords, garages);
+      const nearestSorted = sortGaragesByDistance(coords, garages).slice(0, 5);
 
-      if (nearestTop5.length > 0) {
-        setSelectedSpotId(nearestTop5[0].id);
+      if (nearestSorted.length > 0) {
+        setSelectedSpotId(nearestSorted[0].id);
       }
 
       expandHalfDrawer();
 
-      if (mapRef.current && nearestTop5.length > 0) {
+      if (mapRef.current && nearestSorted.length > 0) {
         mapRef.current.fitToCoordinates(
           [
             coords,
-            ...nearestTop5.map((garage) => ({
+            ...nearestSorted.map((garage) => ({
               latitude: garage.latitude,
               longitude: garage.longitude,
             })),
@@ -305,6 +306,15 @@ export default function FindScreen({
       Alert.alert('Unable to open maps', 'Please try again.');
     }
   };
+
+  const handleAvailabilityChange = useCallback((lotId, spotsOpen) => {
+    const update = (garage) =>
+      garage?.id === String(lotId) ? { ...garage, spotsOpen } : garage;
+
+    setGarages((current) => current.map(update));
+    setInfoGarage((current) => update(current));
+    setLiveViewGarage((current) => update(current));
+  }, []);
 
   const panResponder = useRef(
     PanResponder.create({
@@ -392,7 +402,7 @@ export default function FindScreen({
           carName={carName}
           searchPin={searchPin}
           query={query}
-          garages={top5Garages}
+          garages={sortedGarages}
           selectedSpotId={selectedSpotId}
           onSelectGarage={focusGarage}
           onNearMe={handleNearMe}
@@ -411,7 +421,7 @@ export default function FindScreen({
           referencePoint={referencePoint}
           onGo={handleGo}
           onMoreInfo={setInfoGarage}
-          garages={top5Garages}
+          garages={sortedGarages}
           selectedSpotId={selectedSpotId}
           onSelectGarage={focusGarage}
         />
@@ -433,6 +443,7 @@ export default function FindScreen({
       <GarageLotLiveScreen
         visible={garageLotLiveVisible}
         garage={liveViewGarage}
+        onAvailabilityChange={handleAvailabilityChange}
         onClose={() => {
           setGarageLotLiveVisible(false);
           setLiveViewGarage(null);

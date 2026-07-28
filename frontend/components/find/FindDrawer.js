@@ -12,6 +12,9 @@ import { radius, shadow } from '../../styles/global';
 import { DRAWER_HEIGHT } from '../../constants/findDrawer';
 import { getDistanceMiles } from '../../utils/findUtils';
 
+const openSpotsText = (value) =>
+  value == null ? 'Open: unavailable' : `${value} open`;
+
 export default function FindDrawer({
   tabBarHeight,
   translateY,
@@ -79,7 +82,7 @@ export default function FindDrawer({
 
               <View style={styles.statPill}>
                 <Text style={styles.statLabel}>
-                  {selectedGarage.spotsOpen} open
+                  {openSpotsText(selectedGarage.spotsOpen)}
                 </Text>
               </View>
 
@@ -115,7 +118,7 @@ export default function FindDrawer({
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.sectionTitle}>Top 5 nearby garages</Text>
+          <Text style={styles.sectionTitle}>Nearby garages</Text>
 
           {garages.map((spot) => {
             const isSelected = selectedSpotId === spot.id;
@@ -141,7 +144,9 @@ export default function FindDrawer({
                 <View style={styles.resultStatsInline}>
                   <Text style={styles.resultMeta}>★ {spot.rating}</Text>
                   <Text style={styles.resultMeta}>{spot.ratePerHour}</Text>
-                  <Text style={styles.resultMeta}>{spot.spotsOpen} open</Text>
+                  <Text style={styles.resultMeta}>
+                    {openSpotsText(spot.spotsOpen)}
+                  </Text>
                 </View>
               </TouchableOpacity>
             );

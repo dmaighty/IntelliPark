@@ -17,7 +17,11 @@ from ultralytics import YOLO
 from app.image_utils import encode_jpeg_data_uri
 
 VEHICLE_CLASS_IDS = {2: "car", 5: "bus", 7: "truck"}
-OVERLAP_THRESHOLD = 0.3  # fraction of spot area covered by a vehicle box to call it "occupied"
+VEHICLE_PROXY_CLASS_IDS = {28: "suitcase", 67: "cell phone"}
+DETECTION_CLASS_IDS = {**VEHICLE_CLASS_IDS, **VEHICLE_PROXY_CLASS_IDS}
+MIN_SPOT_OVERLAP = 0.1
+MIN_GEOMETRY_SCORE = 0.05
+PROXY_MIN_CONFIDENCE = 0.45
 
 _HYBRID_YOLO_DIR = Path(__file__).resolve().parent.parent / "hybrid_yolo"
 
@@ -108,17 +112,60 @@ def polygon_overlap_fraction(spot_corners, vehicle_box, frame_shape) -> float:
     return inter_area / spot_area
 
 
-def classify_spots(spots, vehicle_boxes, frame_shape) -> list[bool]:
-    """Return a list of bools, True = occupied, one per spot."""
-    occupied = []
-    for spot in spots:
-        corners = normalize_spot(spot)
-        best = max(
-            (polygon_overlap_fraction(corners, vb, frame_shape) for vb in vehicle_boxes),
-            default=0.0,
-        )
-        occupied.append(best >= OVERLAP_THRESHOLD)
-    return occupied
+def _match_geometry(spot_corners, vehicle_box, frame_shape) -> tuple[float, float]:
+    spot_overlap = polygon_overlap_fraction(spot_corners, vehicle_box, frame_shape)
+    spot_area = abs(cv2.contourArea(np.asarray(spot_corners, dtype=np.float32)))
+    vx1, vy1, vx2, vy2 = vehicle_box
+    box_area = max((vx2 - vx1) * (vy2 - vy1), 1.0)
+    box_overlap = min((spot_overlap * spot_area) / box_area, 1.0)
+    return spot_overlap, float(np.sqrt(spot_overlap * box_overlap))
+
+
+def match_spots(spots, detections, frame_shape) -> list[dict[str, Any] | None]:
+    candidates = []
+    for detection_index, detection in enumerate(detections):
+        confidence = detection["confidence"]
+        class_id = detection["class_id"]
+        if class_id in VEHICLE_PROXY_CLASS_IDS and confidence < PROXY_MIN_CONFIDENCE:
+            continue
+
+        vx1, vy1, vx2, vy2 = detection["box"]
+        center = (float((vx1 + vx2) / 2), float(vy1 + (vy2 - vy1) * 0.75))
+
+        for spot_index, spot in enumerate(spots):
+            corners = normalize_spot(spot)
+            spot_overlap, geometry_score = _match_geometry(
+                corners, detection["box"], frame_shape
+            )
+            if (
+                spot_overlap < MIN_SPOT_OVERLAP
+                or geometry_score < MIN_GEOMETRY_SCORE
+            ):
+                continue
+
+            inside = cv2.pointPolygonTest(
+                np.asarray(corners, dtype=np.float32), center, False
+            ) >= 0
+            score = geometry_score * (0.5 + confidence / 2) * (1.2 if inside else 1)
+            candidates.append(
+                (score, spot_index, detection_index, spot_overlap, geometry_score)
+            )
+
+    matches: list[dict[str, Any] | None] = [None] * len(spots)
+    used_detections = set()
+    for _, spot_index, detection_index, spot_overlap, geometry_score in sorted(
+        candidates, reverse=True
+    ):
+        if matches[spot_index] is not None or detection_index in used_detections:
+            continue
+        detection = detections[detection_index]
+        matches[spot_index] = {
+            **detection,
+            "spot_overlap": float(spot_overlap),
+            "geometry_score": float(geometry_score),
+        }
+        used_detections.add(detection_index)
+    return matches
 
 
 def annotate(frame_bgr: np.ndarray, spots, occupied_flags) -> np.ndarray:
@@ -140,42 +187,96 @@ def annotate(frame_bgr: np.ndarray, spots, occupied_flags) -> np.ndarray:
 def predict_hybrid_from_bytes(
     image_bytes: bytes,
     *,
-    conf: float = 0.25,
+    conf: float = 0.1,
+    imgsz: int = 960,
+    spots: list | None = None,
     spots_path: Path | None = None,
 ) -> dict[str, Any]:
     """
     Decode image bytes, detect vehicles, and classify each configured spot as
     occupied/empty based on overlap with detected vehicles.
+
+    If ``spots`` is explicitly passed (e.g. a garage level's ``defined_spots``
+    from the DB), it's used as-is — including an empty list, which short-circuits
+    to an empty prediction. If ``spots`` is left as ``None``, falls back to the
+    bundled ``spots.json`` (or ``spots_path``) for standalone/CLI use.
     """
     img = Image.open(BytesIO(image_bytes)).convert("RGB")
     width, height = img.size
     frame = np.asarray(img)
 
-    spots = load_spots(spots_path)
+    if spots is None:
+        spots = load_spots(spots_path)
+
+    if not spots:
+        frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+        return {
+            "spots": [],
+            "total_spots": 0,
+            "occupied": 0,
+            "empty": 0,
+            "vehicles_detected": 0,
+            "image_width": width,
+            "image_height": height,
+            "annotated_image": encode_jpeg_data_uri(frame_bgr),
+        }
 
     model = get_hybrid_model()
-    results = model.predict(frame, conf=conf, classes=list(VEHICLE_CLASS_IDS.keys()), verbose=False)
+    results = model.predict(
+        frame,
+        conf=conf,
+        imgsz=imgsz,
+        classes=list(DETECTION_CLASS_IDS),
+        agnostic_nms=True,
+        verbose=False,
+    )
     r = results[0]
-    vehicle_boxes = r.boxes.xyxy.cpu().numpy().tolist() if len(r.boxes) else []
+    detections = []
+    if len(r.boxes):
+        for box, confidence, class_id in zip(
+            r.boxes.xyxy.cpu().numpy().tolist(),
+            r.boxes.conf.cpu().numpy().tolist(),
+            r.boxes.cls.cpu().numpy().astype(int).tolist(),
+        ):
+            detections.append(
+                {
+                    "box": box,
+                    "confidence": float(confidence),
+                    "class_id": int(class_id),
+                    "detected_as": DETECTION_CLASS_IDS[int(class_id)],
+                }
+            )
 
-    occupied_flags = classify_spots(spots, vehicle_boxes, frame.shape)
+    matches = match_spots(spots, detections, frame.shape)
+    occupied_flags = [match is not None for match in matches]
     n_occupied = int(sum(occupied_flags))
 
     frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
     annotated_bgr = annotate(frame_bgr, spots, occupied_flags)
     annotated_image = encode_jpeg_data_uri(annotated_bgr)
 
-    spot_results = [
-        {"spot_id": i, "occupied": bool(occ), "polygon": normalize_spot(spot)}
-        for i, (spot, occ) in enumerate(zip(spots, occupied_flags))
-    ]
+    spot_results = []
+    for i, (spot, match) in enumerate(zip(spots, matches)):
+        result = {
+            "spot_id": i,
+            "occupied": match is not None,
+            "polygon": normalize_spot(spot),
+        }
+        if match:
+            result["match"] = {
+                "detected_as": match["detected_as"],
+                "confidence": match["confidence"],
+                "spot_overlap": match["spot_overlap"],
+                "geometry_score": match["geometry_score"],
+            }
+        spot_results.append(result)
 
     return {
         "spots": spot_results,
         "total_spots": len(spots),
         "occupied": n_occupied,
         "empty": len(spots) - n_occupied,
-        "vehicles_detected": len(vehicle_boxes),
+        "vehicles_detected": len(detections),
         "image_width": width,
         "image_height": height,
         "annotated_image": annotated_image,

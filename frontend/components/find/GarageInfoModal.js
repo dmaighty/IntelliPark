@@ -46,7 +46,9 @@ export default function GarageInfoModal({
       'Check spots',
       selectedLevel
         ? `${selectedLevel.openSpots} spots open on ${selectedLevel.name}.`
-        : `${garage?.spotsOpen ?? 0} total spots open.`
+        : garage?.spotsOpen == null
+          ? 'Live availability is unavailable.'
+          : `${garage.spotsOpen} total spots open.`
     );
   };
 
@@ -83,7 +85,11 @@ export default function GarageInfoModal({
               <InfoRow label="Rate/hr" value={garage?.ratePerHour} />
               <InfoRow
                 label="Spots open"
-                value={garage ? `${garage.spotsOpen}` : '-'}
+                value={
+                  garage?.spotsOpen == null
+                    ? 'Unavailable'
+                    : `${garage.spotsOpen}`
+                }
               />
               <InfoRow label="Schedule" value={garage?.schedule || 'Unavailable'} />
             </View>

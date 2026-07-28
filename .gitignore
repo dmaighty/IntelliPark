@@ -4,6 +4,7 @@ package-lock.json
 node_modules
 __pycache__
 .env
+/admin-dashboard/dist
 /detection_service/.venv
 /detection_service/app/yolo_models
 /detection_service/hybrid_yolo/*.pt

@@ -19,6 +19,7 @@ export default function ProfileScreen({
   onBack,
   onSignOut,
   onPersonalInfo,
+  onMyVehicles,
   refreshTrigger = 0,
   onGarageDemo, // demo only
 }) {
@@ -135,7 +136,7 @@ export default function ProfileScreen({
 
             <TouchableOpacity
               style={styles.menuCard}
-              onPress={() => {}}
+              onPress={() => onMyVehicles?.()}
             >
               <Text style={styles.menuTitle}>My Vehicles</Text>
               <Text style={styles.menuArrow}>›</Text>

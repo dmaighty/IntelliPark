@@ -34,6 +34,7 @@ class ParkingLevel(Base):
     level_number: Mapped[int] = mapped_column(Integer, nullable=False)
     name: Mapped[str] = mapped_column(String(50), nullable=False)
     camera_feed_url: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True)
+    defined_spots: Mapped[Optional[Any]] = mapped_column(JSONB, nullable=True)
 
     parking_lot = relationship("ParkingLot", back_populates="levels")
     spots = relationship("ParkingSpot", back_populates="level")

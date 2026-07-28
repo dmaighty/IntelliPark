@@ -1,4 +1,4 @@
-"""Proxy inference to the detection service (YOLO). Image source is hardcoded for now."""
+"""Proxy inference to the detection service, using a garage's actual camera feed."""
 
 from __future__ import annotations
 
@@ -9,10 +9,11 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session
 
-# TODO: replace with frame extraction from video / per-lot camera_feed_url from DB.
-HARDCODED_FRAME_URL = "http://170.249.152.2:8080/cgi-bin/viewer/video.jpg"
+from app.database.connection import get_db
+from app.db.models.parking import ParkingLevel, ParkingLot
 
 DETECTION_SERVICE_URL = os.environ.get(
     "DETECTION_SERVICE_URL",
@@ -52,18 +53,52 @@ def _post_predict_blocking(predict_url: str, params: dict) -> tuple[int, object]
     except json.JSONDecodeError:
         return status, raw
 
+
+def _pick_level(lot: ParkingLot, level_id: int | None) -> ParkingLevel:
+    levels = sorted(lot.levels or [], key=lambda lv: lv.level_number)
+
+    if level_id is not None:
+        for level in levels:
+            if level.id == level_id:
+                return level
+        raise HTTPException(status_code=404, detail="Level not found for this garage")
+
+    for level in levels:
+        if level.camera_feed_url:
+            return level
+    raise HTTPException(status_code=404, detail="No camera configured for this garage")
+
+
 @router.get("/live-frame")
 async def predict_live_frame(
-    conf: float = 0.25,
-    imgsz: int = 640,
+    lot_id: int = Query(..., description="Parking lot (garage) id"),
+    level_id: int | None = Query(
+        None, description="Specific level id; defaults to the first level with a camera"
+    ),
+    conf: float = 0.1,
+    imgsz: int = 960,
+    db: Session = Depends(get_db),
 ):
     """
-    Fetch one snapshot from the hardcoded camera URL and run detection via the
-    detection service. Configure base URL with ``DETECTION_SERVICE_URL`` and
-    which endpoint to hit with ``DETECTION_PREDICT_PATH``.
+    Fetch one snapshot from the garage's camera feed and run detection via the
+    detection service, using that level's manually-defined spots (if any).
+    Levels with no defined spots get an empty prediction back.
     """
+    lot = db.get(ParkingLot, lot_id)
+    if not lot:
+        raise HTTPException(status_code=404, detail="Garage not found")
+
+    level = _pick_level(lot, level_id)
+    if not level.camera_feed_url:
+        raise HTTPException(status_code=404, detail="No camera configured for this level")
+
     predict_url = f"{DETECTION_SERVICE_URL}{DETECTION_PREDICT_PATH}"
-    params = {"url": HARDCODED_FRAME_URL, "conf": conf, "imgsz": imgsz}
+    params = {
+        "url": level.camera_feed_url,
+        "conf": conf,
+        "imgsz": imgsz,
+        "spots": json.dumps(level.defined_spots or []),
+    }
 
     try:
         status, body = await asyncio.to_thread(
@@ -81,5 +116,15 @@ async def predict_live_frame(
         else:
             detail = body
         raise HTTPException(status_code=status, detail=detail)
+
+    if (
+        isinstance(body, dict)
+        and isinstance(body.get("empty"), int)
+        and isinstance(body.get("total_spots"), int)
+        and body["total_spots"] > 0
+    ):
+        lot.spots_open = body["empty"]
+        db.commit()
+        body["spots_open"] = lot.spots_open
 
     return body

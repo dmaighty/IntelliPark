@@ -1,3 +1,5 @@
+import json
+
 import httpx
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile
 
@@ -17,8 +19,25 @@ async def hybrid_predict_frame(
         None,
         description="",
     ),
-    conf: float = Query(0.25, ge=0.0, le=1.0, description="Minimum vehicle-detection confidence"),
+    conf: float = Query(0.1, ge=0.0, le=1.0, description="Minimum vehicle-detection confidence"),
+    imgsz: int = Query(960, ge=320, le=1920, description="YOLO inference size"),
+    spots: str | None = Query(
+        None,
+        description=(
+            "JSON-encoded list of spot polygons (e.g. a garage level's defined_spots). "
+            "Pass '[]' for no spots. Omit to fall back to the bundled spots.json."
+        ),
+    ),
 ):
+    parsed_spots = None
+    if spots is not None:
+        try:
+            parsed_spots = json.loads(spots)
+        except json.JSONDecodeError as e:
+            raise HTTPException(status_code=400, detail=f"Invalid spots JSON: {e}") from e
+        if not isinstance(parsed_spots, list):
+            raise HTTPException(status_code=400, detail="spots must be a JSON array")
+
     url_stripped = (url or "").strip()
     file_bytes = b""
     if file is not None:
@@ -54,7 +73,12 @@ async def hybrid_predict_frame(
         )
 
     try:
-        return predict_hybrid_from_bytes(raw, conf=conf)
+        return predict_hybrid_from_bytes(
+            raw,
+            conf=conf,
+            imgsz=imgsz,
+            spots=parsed_spots,
+        )
     except FileNotFoundError as e:
         raise HTTPException(status_code=503, detail=str(e)) from e
     except OSError as e:

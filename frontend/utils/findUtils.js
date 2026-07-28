@@ -37,10 +37,10 @@ export const buildDirectionsUrl = (garage) => {
   return `https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=driving`;
 };
 
-export const getTop5ClosestGarages = (point, garages) => {
-  return [...garages]
-    .sort((a, b) => getDistanceMiles(point, a) - getDistanceMiles(point, b))
-    .slice(0, 5);
+export const sortGaragesByDistance = (point, garages) => {
+  return [...garages].sort(
+    (a, b) => getDistanceMiles(point, a) - getDistanceMiles(point, b)
+  );
 };
 
 export const getOffsetRegion = (
@@ -68,7 +68,7 @@ export const mapParkingLotApiToGarage = (row) => {
     longitude: lng,
     rating: row.rating != null ? Number(row.rating) : 0,
     ratePerHour: row.rate_per_hour ?? '',
-    spotsOpen: row.spots_open != null ? row.spots_open : 0,
+    spotsOpen: row.spots_open != null ? Number(row.spots_open) : null,
     details: row.details ?? '',
     schedule: row.schedule ?? '',
     peakTimes: Array.isArray(row.peak_times) ? row.peak_times : [],

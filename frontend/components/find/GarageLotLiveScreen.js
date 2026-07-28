@@ -17,22 +17,37 @@ import { spacing, radius, shadow } from '../../styles/global';
 const { width: WINDOW_WIDTH } = Dimensions.get('window');
 const H_PADDING = spacing.screen;
 
-const AUTO_REFRESH_MS = 20_000;
+const AUTO_REFRESH_MS = 30_000;
 
-export default function GarageLotLiveScreen({ visible, garage, onClose }) {
+export default function GarageLotLiveScreen({
+  visible,
+  garage,
+  onClose,
+  onAvailabilityChange,
+}) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [payload, setPayload] = useState(null);
   const loadInFlight = useRef(false);
 
   const load = useCallback(async () => {
-    if (loadInFlight.current) return;
+    if (loadInFlight.current || !garage?.id) return;
     loadInFlight.current = true;
     setLoading(true);
     setError('');
     try {
-      const data = await getLiveFramePredictions({ conf: 0.25, imgsz: 640 });
+      const data = await getLiveFramePredictions({
+        lotId: garage.id,
+        conf: 0.1,
+        imgsz: 960,
+      });
       setPayload(data);
+      if (
+        data.total_spots > 0 &&
+        typeof data.empty === 'number'
+      ) {
+        onAvailabilityChange?.(garage.id, data.empty);
+      }
     } catch (e) {
       setPayload(null);
       setError(e.message || 'Could not load predictions');
@@ -40,10 +55,10 @@ export default function GarageLotLiveScreen({ visible, garage, onClose }) {
       loadInFlight.current = false;
       setLoading(false);
     }
-  }, []);
+  }, [garage?.id, onAvailabilityChange]);
 
   useEffect(() => {
-    if (!visible) {
+    if (!visible || !garage?.id) {
       setPayload(null);
       setError('');
       return;
@@ -52,7 +67,7 @@ export default function GarageLotLiveScreen({ visible, garage, onClose }) {
     load();
     const intervalId = setInterval(load, AUTO_REFRESH_MS);
     return () => clearInterval(intervalId);
-  }, [visible, load]);
+  }, [visible, garage?.id, load]);
 
   const apiW = Number(payload?.image_width);
   const apiH = Number(payload?.image_height);
@@ -94,10 +109,10 @@ export default function GarageLotLiveScreen({ visible, garage, onClose }) {
           contentContainerStyle={styles.scroll}
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.hint}>
+          {/* <Text style={styles.hint}>
             Live frame (demo). Refreshes every {AUTO_REFRESH_MS / 1000}s. Spot
             boxes are drawn by the detection service.
-          </Text>
+          </Text> */}
 
           <View style={[styles.legend, shadow.soft]}>
             <View style={styles.legendRow}>
@@ -142,10 +157,18 @@ export default function GarageLotLiveScreen({ visible, garage, onClose }) {
 
           {typeof payload?.occupied === 'number' &&
           typeof payload?.empty === 'number' ? (
-            <Text style={styles.countText}>
-              {payload.occupied} occupied · {payload.empty} empty
-              {payload.total_spots ? ` (of ${payload.total_spots} spots)` : ''}
-            </Text>
+            payload.total_spots ? (
+              <Text style={styles.countText}>
+                {payload.occupied} occupied · {payload.empty} empty (of{' '}
+                {payload.total_spots} spots)
+              </Text>
+            ) : (
+              !loading && (
+                <Text style={styles.countText}>
+                  No parking spots have been defined for this garage yet.
+                </Text>
+              )
+            )
           ) : (
             !!payload?.detections?.length && (
               <Text style={styles.countText}>
