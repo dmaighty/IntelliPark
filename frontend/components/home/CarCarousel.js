@@ -5,11 +5,20 @@ import {
   StyleSheet,
   Image,
   TouchableOpacity,
+  Pressable,
   Animated,
   Dimensions,
 } from 'react-native';
-import { spacing, radius, shadow, globalStyles } from '../../styles/global';
-import { getCarDisplayName, getCarSubtitle } from '../../utils/carUtils';
+
+import {
+  spacing,
+  radius,
+  shadow,
+  globalStyles,
+} from '../../styles/global';
+
+import { getCarDisplayName } from '../../utils/carUtils';
+import CarStatusRow from './CarStatusRow';
 
 const { width, height } = Dimensions.get('window');
 
@@ -18,11 +27,11 @@ const SNAP_INTERVAL = CARD_WIDTH + spacing.cardGap;
 
 export default function CarCarousel({
   carData,
-  visibleCars,
   scrollX,
   scrollViewRef,
   onAddCarPress,
   onOpenMenu,
+  onCarPress,
   onScrollToCard,
   onCardSnap,
 }) {
@@ -38,13 +47,29 @@ export default function CarCarousel({
         disableIntervalMomentum
         contentContainerStyle={styles.carsScroll}
         onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-          { useNativeDriver: false }
+          [
+            {
+              nativeEvent: {
+                contentOffset: {
+                  x: scrollX,
+                },
+              },
+            },
+          ],
+          {
+            useNativeDriver: false,
+          }
         )}
         onMomentumScrollEnd={(event) => {
           const offsetX = event.nativeEvent.contentOffset.x;
-          const snappedIndex = Math.round(offsetX / SNAP_INTERVAL);
-          onCardSnap?.(snappedIndex, snappedIndex * SNAP_INTERVAL);
+          const snappedIndex = Math.round(
+            offsetX / SNAP_INTERVAL
+          );
+
+          onCardSnap?.(
+            snappedIndex,
+            snappedIndex * SNAP_INTERVAL
+          );
         }}
         scrollEventThrottle={16}
       >
@@ -74,7 +99,10 @@ export default function CarCarousel({
                 style={[
                   styles.carCard,
                   styles.addCarCard,
-                  { transform: [{ scale }], opacity },
+                  {
+                    transform: [{ scale }],
+                    opacity,
+                  },
                 ]}
               >
                 <TouchableOpacity
@@ -83,46 +111,81 @@ export default function CarCarousel({
                   onPress={onAddCarPress}
                 >
                   <Text style={styles.addCarPlus}>＋</Text>
-                  <Text style={styles.addCarText}>Add Car</Text>
-                  <Text style={styles.addCarSubtext}>Up to 7 vehicles</Text>
+
+                  <Text style={styles.addCarText}>
+                    Add Car
+                  </Text>
+
+                  <Text style={styles.addCarSubtext}>
+                    Up to 7 vehicles
+                  </Text>
                 </TouchableOpacity>
               </Animated.View>
             );
           }
+
+          const carName = getCarDisplayName(car);
 
           return (
             <Animated.View
               key={car.id}
               style={[
                 styles.carCard,
-                { transform: [{ scale }], opacity },
+                {
+                  transform: [{ scale }],
+                  opacity,
+                },
               ]}
             >
-              <TouchableOpacity
-                style={styles.cardMenuButton}
-                activeOpacity={0.8}
-                onPress={() => onOpenMenu?.(car)}
+              <Pressable
+                style={({ pressed }) => [
+                  styles.cardPressable,
+                  pressed && styles.cardPressed,
+                ]}
+                onPress={() => onCarPress?.(car)}
+                accessibilityRole="button"
+                accessibilityLabel={`View details for ${carName}`}
               >
-                <Text style={styles.cardMenuText}>⋯</Text>
-              </TouchableOpacity>
+                <Pressable
+                  style={styles.cardMenuButton}
+                  hitSlop={8}
+                  onPress={(event) => {
+                    event.stopPropagation();
+                    onOpenMenu?.(car);
+                  }}
+                >
+                  <Text style={styles.cardMenuText}>
+                    ⋯
+                  </Text>
+                </Pressable>
 
-              <Image
-                source={car.image}
-                style={styles.carImage}
-                resizeMode="contain"
-              />
-
-              <Text style={styles.carTitle}>{getCarDisplayName(car)}</Text>
-
-              <View style={styles.carMetaRow}>
-                {!!car.year && <Text style={styles.carMetaText}>{car.year}</Text>}
-                {!!car.year && !!car.licensePlate && (
-                  <Text style={styles.carMetaDot}>•</Text>
+                {car.isCurrentVehicle && (
+                  <View style={styles.currentVehicleBadge}>
+                    <Text
+                      style={styles.currentVehicleBadgeText}
+                    >
+                      Connected
+                    </Text>
+                  </View>
                 )}
-                {!!car.licensePlate && (
-                  <Text style={styles.carMetaText}>{car.licensePlate}</Text>
-                )}
-              </View>
+
+                <Image
+                  source={car.image}
+                  style={styles.carImage}
+                  resizeMode="contain"
+                />
+
+                <Text
+                  style={styles.carTitle}
+                  numberOfLines={2}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.8}
+                >
+                  {carName}
+                </Text>
+
+                <CarStatusRow status={car.status} />
+              </Pressable>
             </Animated.View>
           );
         })}
@@ -145,9 +208,17 @@ export default function CarCarousel({
           return (
             <Animated.Text
               key={car.id}
-              style={[styles.currentCarName, { opacity }]}
+              style={[
+                styles.currentCarName,
+                {
+                  opacity,
+                },
+              ]}
+              numberOfLines={2}
             >
-              {car.isAddCard ? 'Add a new vehicle' : getCarSubtitle(car)}
+              {car.isAddCard
+                ? 'Add a new vehicle'
+                : getCarDisplayName(car)}
             </Animated.Text>
           );
         })}
@@ -155,7 +226,7 @@ export default function CarCarousel({
 
       {carData.length > 1 && (
         <View style={globalStyles.centeredRow}>
-          {carData.map((_, index) => {
+          {carData.map((car, index) => {
             const inputRange = [
               (index - 1) * SNAP_INTERVAL,
               index * SNAP_INTERVAL,
@@ -176,7 +247,7 @@ export default function CarCarousel({
 
             return (
               <TouchableOpacity
-                key={index}
+                key={car.id ?? index}
                 activeOpacity={0.8}
                 onPress={() => onScrollToCard?.(index)}
               >
@@ -205,22 +276,41 @@ const styles = StyleSheet.create({
 
   carsScroll: {
     paddingLeft: spacing.screen,
-    paddingRight: spacing.screen - spacing.cardGap,
+    paddingRight:
+      spacing.screen - spacing.cardGap,
   },
 
   carCard: {
     position: 'relative',
     width: CARD_WIDTH,
+
+    // Restored original card height
     minHeight: height * 0.22,
+
     borderRadius: radius.large,
-    paddingTop: 22,
-    paddingBottom: 16,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
     marginRight: spacing.cardGap,
     backgroundColor: '#f8f8f8',
     ...shadow.card,
+  },
+
+  cardPressable: {
+    flex: 1,
+    width: '100%',
+    minHeight: height * 0.22,
+    borderRadius: radius.large,
+
+    // Restored original spacing
+    paddingTop: 22,
+    paddingBottom: 16,
+    paddingHorizontal: 16,
+
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f8f8f8',
+  },
+
+  cardPressed: {
+    opacity: 0.72,
   },
 
   cardMenuButton: {
@@ -233,7 +323,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ededed',
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 5,
+    zIndex: 10,
   },
 
   cardMenuText: {
@@ -244,40 +334,39 @@ const styles = StyleSheet.create({
     marginTop: -6,
   },
 
+  currentVehicleBadge: {
+    position: 'absolute',
+    top: 13,
+    left: 14,
+    minHeight: 24,
+    paddingHorizontal: 9,
+    borderRadius: 12,
+    backgroundColor: '#e8f2ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 5,
+  },
+
+  currentVehicleBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#007aff',
+  },
+
   carImage: {
     width: '100%',
     height: 95,
-    marginBottom: 12,
+    marginBottom: 10,
   },
 
   carTitle: {
     width: '100%',
+    paddingHorizontal: 8,
     fontSize: 18,
+    lineHeight: 22,
     fontWeight: '700',
     color: '#000',
     textAlign: 'center',
-    lineHeight: 24,
-  },
-
-  carMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 8,
-    minHeight: 18,
-  },
-
-  carMetaText: {
-    fontSize: 13,
-    color: '#666',
-    fontWeight: '600',
-  },
-
-  carMetaDot: {
-    marginHorizontal: 6,
-    fontSize: 13,
-    color: '#666',
-    fontWeight: '700',
   },
 
   addCarCard: {
@@ -290,7 +379,8 @@ const styles = StyleSheet.create({
   addCarContent: {
     flex: 1,
     width: '100%',
-    minHeight: 140,
+    minHeight: height * 0.22,
+    borderRadius: radius.large,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -322,11 +412,13 @@ const styles = StyleSheet.create({
 
   currentCarName: {
     position: 'absolute',
+    width: '100%',
+    paddingHorizontal: 24,
     fontSize: 14,
+    lineHeight: 20,
     fontWeight: '600',
     color: '#222',
     textAlign: 'center',
-    paddingHorizontal: 24,
   },
 
   dot: {

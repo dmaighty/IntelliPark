@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
+
 import { spacing, radius, shadow } from '../../styles/global';
 import { buildRegion } from '../../utils/mapUtils';
 import { getCarDisplayName } from '../../utils/carUtils';
@@ -26,6 +27,9 @@ export default function MapSection({
   onFindCarPress,
   onFindUserPress,
 }) {
+  const markerImage =
+    selectedCar?.parkedImage || selectedCar?.image || null;
+
   return (
     <View style={styles.mapSection}>
       <View style={styles.mapWrap}>
@@ -43,19 +47,25 @@ export default function MapSection({
               key={selectedCar.id}
               coordinate={selectedCar.parkedLocation}
               title={getCarDisplayName(selectedCar)}
-              description={selectedCar.licensePlate || 'Saved car location'}
-              anchor={{ x: 0.5, y: 1 }}
-              tracksViewChanges
+              description={
+                selectedCar.licensePlate || 'Saved car location'
+              }
+              anchor={{ x: 0.5, y: 0.5 }}
+              tracksViewChanges={false}
             >
-              {selectedCar.image ? (
+              {markerImage ? (
                 <Image
-                  source={selectedCar.image}
+                  source={markerImage}
                   style={styles.carMarkerImage}
                   resizeMode="contain"
                 />
               ) : (
                 <View style={styles.carMarkerFallback}>
-                  <Ionicons name="car-sport" size={20} color="#111" />
+                  <Ionicons
+                    name="car-sport"
+                    size={20}
+                    color="#111"
+                  />
                 </View>
               )}
             </Marker>
@@ -68,7 +78,11 @@ export default function MapSection({
             onPress={onFindCarPress}
             activeOpacity={0.85}
           >
-            <Ionicons name="car-sport-outline" size={20} color="#111" />
+            <Ionicons
+              name="car-sport-outline"
+              size={20}
+              color="#111"
+            />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -76,7 +90,11 @@ export default function MapSection({
             onPress={onFindUserPress}
             activeOpacity={0.85}
           >
-            <Ionicons name="navigate" size={18} color="#111" />
+            <Ionicons
+              name="navigate"
+              size={18}
+              color="#111"
+            />
           </TouchableOpacity>
         </View>
 
@@ -111,7 +129,9 @@ export default function MapSection({
             onPress={onFindPress}
             activeOpacity={0.85}
           >
-            <Text style={styles.findParkingText}>Find Parking</Text>
+            <Text style={styles.findParkingText}>
+              Find Parking
+            </Text>
           </TouchableOpacity>
         </Animated.View>
       </View>
