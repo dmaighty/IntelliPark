@@ -8,18 +8,23 @@ import {
   Dimensions,
   StyleSheet,
 } from 'react-native';
+
 import { globalStyles, spacing } from '../styles/global';
+
 import CarCarousel from '../components/home/CarCarousel';
 import MapSection from '../components/home/MapSection';
 import ChatSheet from '../components/home/ChatSheet';
 import CarMenuModal from '../components/home/CarMenuModal';
+
 import useLocationPermission from '../hooks/useLocationPermission';
 import useKeyboardSheet from '../hooks/useKeyboardSheet';
 import useHomeCars from '../hooks/useHomeCars';
 import useHomeMap from '../hooks/useHomeMap';
+
 import { DEFAULT_COORDS } from '../utils/mapUtils';
 
 const { width } = Dimensions.get('window');
+
 const CARD_WIDTH = width - 64;
 const SNAP_INTERVAL = CARD_WIDTH + spacing.cardGap;
 
@@ -35,9 +40,13 @@ export default function HomeScreen({
 }) {
   const scrollX = useRef(new Animated.Value(0)).current;
   const scrollViewRef = useRef(null);
+
   const [message, setMessage] = useState('');
 
-  const { locationGranted, userLocation } = useLocationPermission();
+  const {
+    locationGranted,
+    userLocation,
+  } = useLocationPermission();
 
   const {
     composerBoxMinHeight,
@@ -50,7 +59,6 @@ export default function HomeScreen({
     visibleCars,
     carData,
     selectedCar,
-    currentCarIndex,
     setCurrentCarIndex,
     menuCar,
     openMenu,
@@ -63,10 +71,12 @@ export default function HomeScreen({
     onRemoveCarPress,
   });
 
-  const firstMapCoordinate = useMemo(
-    () => visibleCars[0]?.parkedLocation || DEFAULT_COORDS,
-    [visibleCars]
-  );
+  const firstMapCoordinate = useMemo(() => {
+    return (
+      visibleCars[0]?.parkedLocation ||
+      DEFAULT_COORDS
+    );
+  }, [visibleCars]);
 
   const {
     mapRef,
@@ -87,22 +97,45 @@ export default function HomeScreen({
     onChatPress?.();
   };
 
+  /*
+   * Called when the user taps an existing carousel card.
+   * This sends that car to the same edit handler used by
+   * the three-dot menu.
+   */
+  const handleCarCardPress = (car) => {
+    if (!car || car.isAddCard) {
+      return;
+    }
+
+    onEditCarPress?.(car);
+  };
+
   const scrollToCard = (index) => {
     scrollViewRef.current?.scrollTo({
       x: index * SNAP_INTERVAL,
       animated: true,
     });
 
-    if (index >= 0 && index < visibleCars.length) {
+    if (
+      index >= 0 &&
+      index < visibleCars.length
+    ) {
       setCurrentCarIndex(index);
       focusMapOnCar(visibleCars[index], true);
     }
   };
 
   const handleCardSnap = (snappedIndex) => {
-    if (snappedIndex >= 0 && snappedIndex < visibleCars.length) {
+    if (
+      snappedIndex >= 0 &&
+      snappedIndex < visibleCars.length
+    ) {
       setCurrentCarIndex(snappedIndex);
-      focusMapOnCar(visibleCars[snappedIndex], true);
+
+      focusMapOnCar(
+        visibleCars[snappedIndex],
+        true
+      );
     }
   };
 
@@ -113,6 +146,7 @@ export default function HomeScreen({
           <TouchableOpacity
             style={globalStyles.profileCircle}
             onPress={onProfilePress}
+            activeOpacity={0.85}
           >
             <Image
               source={require('../assets/profile.png')}
@@ -127,6 +161,13 @@ export default function HomeScreen({
           scrollViewRef={scrollViewRef}
           onAddCarPress={onAddCarPress}
           onOpenMenu={openMenu}
+
+          /*
+           * This was missing.
+           * It makes the whole car card open the edit screen.
+           */
+          onCarPress={handleCarCardPress}
+
           onScrollToCard={scrollToCard}
           onCardSnap={handleCardSnap}
         />
@@ -157,7 +198,7 @@ export default function HomeScreen({
       </View>
 
       <CarMenuModal
-        visible={!!menuCar}
+        visible={Boolean(menuCar)}
         menuCar={menuCar}
         onClose={closeMenu}
         onEdit={handleEditCar}
