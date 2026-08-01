@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class VehicleOut(BaseModel):
@@ -30,6 +30,13 @@ class VehicleCreateIn(BaseModel):
     parked_latitude: float | None = None
     parked_longitude: float | None = None
 
+    @field_validator("year", mode="before")
+    @classmethod
+    def normalize_year(cls, value):
+        if value is None or value == "":
+            return None
+        return str(value).strip()
+
 
 class VehicleUpdateIn(BaseModel):
     license_plate: str | None = Field(None, max_length=20)
@@ -42,3 +49,10 @@ class VehicleUpdateIn(BaseModel):
     image_url: str | None = None
     parked_latitude: float | None = None
     parked_longitude: float | None = None
+
+    @field_validator("year", mode="before")
+    @classmethod
+    def normalize_year(cls, value):
+        if value is None or value == "":
+            return None
+        return str(value).strip()

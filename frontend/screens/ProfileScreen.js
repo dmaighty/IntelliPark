@@ -11,23 +11,32 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { globalStyles, spacing, radius, shadow } from '../styles/global';
-import { getMyProfile } from '../api/users';
+import { globalStyles, spacing, radius, shadow, colors } from '../styles/global';
+import { getMyProfile, updateMyProfile } from '../api/users';
+import {
+  buildProfileImageDataUrl,
+  getProfileImageSource,
+} from '../utils/profileImage';
 
 export default function ProfileScreen({
   accessToken,
+  profileImageUrl = null,
+  onProfileImageChange,
   onBack,
   onSignOut,
   onPersonalInfo,
+  onSecuritySettings,
   onMyVehicles,
+  onSavedPlaces,
+  onNotificationSettings,
+  onSavedGarages,
+  onHelpSupport,
   refreshTrigger = 0,
-  onGarageDemo, // demo only
+  onGarageDemo,
 }) {
-  const [profileImage, setProfileImage] = useState(
-    require('../assets/profile.png')
-  );
   const [profile, setProfile] = useState(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
+  const [savingPhoto, setSavingPhoto] = useState(false);
   const [profileError, setProfileError] = useState('');
 
   useEffect(() => {
@@ -37,24 +46,30 @@ export default function ProfileScreen({
         setLoadingProfile(false);
         return;
       }
+
       setLoadingProfile(true);
       setProfileError('');
+
       try {
         const data = await getMyProfile(accessToken);
-        if (data?.detail) {
-          throw new Error(data.detail);
-        }
         setProfile(data);
+        onProfileImageChange?.(data?.profile_image_url || null);
       } catch (e) {
         setProfileError(e.message || 'Failed to load profile');
       } finally {
         setLoadingProfile(false);
       }
     };
+
     loadProfile();
-  }, [accessToken, refreshTrigger]);
+  }, [accessToken, refreshTrigger, onProfileImageChange]);
 
   const handleEditPhoto = async () => {
+    if (!accessToken) {
+      Alert.alert('Not signed in', 'Sign in to update your profile photo.');
+      return;
+    }
+
     const permissionResult =
       await ImagePicker.requestMediaLibraryPermissionsAsync();
 
@@ -70,13 +85,45 @@ export default function ProfileScreen({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 1,
+      quality: 0.7,
+      base64: true,
     });
 
-    if (!result.canceled) {
-      setProfileImage({ uri: result.assets[0].uri });
+    if (result.canceled || !result.assets?.[0]) {
+      return;
+    }
+
+    const asset = result.assets[0];
+    const mimeType = asset.mimeType || 'image/jpeg';
+    const dataUrl = buildProfileImageDataUrl(asset.base64, mimeType);
+
+    if (!dataUrl) {
+      Alert.alert('Could not save photo', 'Unable to read the selected image.');
+      return;
+    }
+
+    try {
+      setSavingPhoto(true);
+
+      const updated = await updateMyProfile(accessToken, {
+        profile_image_url: dataUrl,
+      });
+
+      setProfile(updated);
+      onProfileImageChange?.(updated?.profile_image_url || dataUrl);
+    } catch (e) {
+      Alert.alert(
+        'Could not save photo',
+        e.message || 'Something went wrong while saving your profile photo.'
+      );
+    } finally {
+      setSavingPhoto(false);
     }
   };
+
+  const profileImageSource = getProfileImageSource(
+    profile?.profile_image_url || profileImageUrl
+  );
 
   return (
     <SafeAreaView style={globalStyles.screen}>
@@ -99,13 +146,21 @@ export default function ProfileScreen({
         <View style={styles.contentInset}>
           <View style={styles.headerSection}>
             <View style={styles.profileImageWrapper}>
-              <Image source={profileImage} style={styles.profileImage} />
+              <Image source={profileImageSource} style={styles.profileImage} />
 
               <TouchableOpacity
-                style={styles.editPhotoButton}
+                style={[
+                  styles.editPhotoButton,
+                  savingPhoto && styles.editPhotoButtonDisabled,
+                ]}
                 onPress={handleEditPhoto}
+                disabled={savingPhoto}
               >
-                <Text style={styles.editPhotoText}>Edit</Text>
+                {savingPhoto ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.editPhotoText}>Edit</Text>
+                )}
               </TouchableOpacity>
             </View>
 
@@ -136,6 +191,14 @@ export default function ProfileScreen({
 
             <TouchableOpacity
               style={styles.menuCard}
+              onPress={() => onSecuritySettings?.()}
+            >
+              <Text style={styles.menuTitle}>Security Settings</Text>
+              <Text style={styles.menuArrow}>›</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuCard}
               onPress={() => onMyVehicles?.()}
             >
               <Text style={styles.menuTitle}>My Vehicles</Text>
@@ -144,31 +207,15 @@ export default function ProfileScreen({
 
             <TouchableOpacity
               style={styles.menuCard}
-              onPress={() => {}}
+              onPress={() => onSavedPlaces?.()}
             >
-              <Text style={styles.menuTitle}>My History</Text>
+              <Text style={styles.menuTitle}>Pinned Locations</Text>
               <Text style={styles.menuArrow}>›</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.menuCard}
-              onPress={() => {}}
-            >
-              <Text style={styles.menuTitle}>Notification Settings</Text>
-              <Text style={styles.menuArrow}>›</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.menuCard}
-              onPress={() => {}}
-            >
-              <Text style={styles.menuTitle}>Payment Method</Text>
-              <Text style={styles.menuArrow}>›</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.menuCard}
-              onPress={() => {}}
+              onPress={() => onSavedGarages?.()}
             >
               <Text style={styles.menuTitle}>Saved Garages</Text>
               <Text style={styles.menuArrow}>›</Text>
@@ -176,7 +223,15 @@ export default function ProfileScreen({
 
             <TouchableOpacity
               style={styles.menuCard}
-              onPress={() => {}}
+              onPress={() => onNotificationSettings?.()}
+            >
+              <Text style={styles.menuTitle}>Notification Settings</Text>
+              <Text style={styles.menuArrow}>›</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuCard}
+              onPress={() => onHelpSupport?.()}
             >
               <Text style={styles.menuTitle}>Help and Support</Text>
               <Text style={styles.menuArrow}>›</Text>
@@ -184,29 +239,11 @@ export default function ProfileScreen({
 
             <TouchableOpacity
               style={styles.menuCard}
-              onPress={() => {}}
-            >
-              <Text style={styles.menuTitle}>Privacy & Security</Text>
-              <Text style={styles.menuArrow}>›</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.menuCard}
-              onPress={() => {}}
-            >
-              <Text style={styles.menuTitle}>App Settings</Text>
-              <Text style={styles.menuArrow}>›</Text>
-            </TouchableOpacity>
-
-            
-            <TouchableOpacity
-              style={styles.menuCard}
-              onPress={() => onGarageDemo?.()} // for demo only
+              onPress={() => onGarageDemo?.()}
             >
               <Text style={styles.menuTitle}>Garage Demo</Text>
               <Text style={styles.menuArrow}>›</Text>
             </TouchableOpacity>
-
           </View>
         </View>
       </ScrollView>
@@ -273,6 +310,13 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: radius.medium,
+    minWidth: 52,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  editPhotoButtonDisabled: {
+    opacity: 0.7,
   },
 
   editPhotoText: {
@@ -299,7 +343,7 @@ const styles = StyleSheet.create({
   },
 
   menuCard: {
-    backgroundColor: '#f8f8f8',
+    backgroundColor: colors.surface,
     borderRadius: radius.medium,
     paddingVertical: 18,
     paddingHorizontal: 18,

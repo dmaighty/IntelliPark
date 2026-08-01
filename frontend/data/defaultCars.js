@@ -9,6 +9,9 @@ const blackImages = getCarImages('black');
 const whiteImages = getCarImages('white');
 const redImages = getCarImages('red');
 
+const parkedRecently = () =>
+  new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+
 export const defaultCars = [
   {
     id: 1,
@@ -18,26 +21,21 @@ export const defaultCars = [
     licensePlate: '8ABC123',
     color: 'Black',
     colorId: 'black',
-
-    // Carousel and details image
     image: blackImages.image,
-
-    // Map marker image
     parkedImage: blackImages.parkedImage,
-
     status: CAR_STATUS.PARKED,
-
     bluetoothDeviceId: null,
     bluetoothDeviceName: null,
-
     tripStartedAt: null,
     tripDistanceMeters: 0,
-
-    parkedAt: null,
+    parkedAt: parkedRecently(),
     parkedLocation: {
-      latitude: 37.3356,
-      longitude: -121.881,
+      latitude: 37.3329,
+      longitude: -121.8808,
     },
+    parkedLotName: 'South Garage',
+    parkedLotAddress: '330 S 7th St, San Jose, CA',
+    parkedLotRate: '$4/hr',
   },
 
   {
@@ -48,23 +46,21 @@ export const defaultCars = [
     licensePlate: '8XYZ456',
     color: 'White',
     colorId: 'white',
-
     image: whiteImages.image,
     parkedImage: whiteImages.parkedImage,
-
     status: CAR_STATUS.PARKED,
-
     bluetoothDeviceId: null,
     bluetoothDeviceName: null,
-
     tripStartedAt: null,
     tripDistanceMeters: 0,
-
-    parkedAt: null,
+    parkedAt: parkedRecently(),
     parkedLocation: {
-      latitude: 37.3364,
-      longitude: -121.8789,
+      latitude: 37.3342,
+      longitude: -121.8851,
     },
+    parkedLotName: 'West Garage',
+    parkedLotAddress: '355 S 4th St, San Jose, CA',
+    parkedLotRate: '$5/hr',
   },
 
   {
@@ -75,22 +71,20 @@ export const defaultCars = [
     licensePlate: '9TES789',
     color: 'Red',
     colorId: 'red',
-
     image: redImages.image,
     parkedImage: redImages.parkedImage,
-
-    status: CAR_STATUS.PARKED,
-
+    status: CAR_STATUS.DRIVING,
     bluetoothDeviceId: null,
     bluetoothDeviceName: null,
-
-    tripStartedAt: null,
+    tripStartedAt: new Date().toISOString(),
     tripDistanceMeters: 0,
-
     parkedAt: null,
     parkedLocation: {
-      latitude: 37.3348,
-      longitude: -121.8832,
+      latitude: 37.3376,
+      longitude: -121.8831,
     },
+    parkedLotName: null,
+    parkedLotAddress: null,
+    parkedLotRate: null,
   },
 ];

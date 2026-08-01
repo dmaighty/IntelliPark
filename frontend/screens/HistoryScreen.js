@@ -1,24 +1,141 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   SafeAreaView,
   View,
   Text,
   StyleSheet,
   ScrollView,
+  TextInput,
+  TouchableOpacity,
+  Modal,
+  Pressable,
 } from 'react-native';
-import { globalStyles, spacing, radius, shadow } from '../styles/global';
+import { Ionicons } from '@expo/vector-icons';
+import { globalStyles, spacing, radius, shadow, colors } from '../styles/global';
+import {
+  filterHistoryItems,
+  getHistoryCarOptions,
+  getHistoryLocationDisplay,
+} from '../utils/parkingHistoryUtils';
 
 export default function HistoryScreen({
   history = [],
+  cars = [],
   tabBarHeight = 100,
 }) {
+  const [query, setQuery] = useState('');
+  const [selectedCarId, setSelectedCarId] = useState('all');
+  const [carFilterOpen, setCarFilterOpen] = useState(false);
+
+  const carOptions = useMemo(
+    () => getHistoryCarOptions(history, cars),
+    [history, cars]
+  );
+
+  const selectedCarLabel = useMemo(() => {
+    const match = carOptions.find((option) => option.id === selectedCarId);
+    return match?.label || 'All cars';
+  }, [carOptions, selectedCarId]);
+
+  const filteredHistory = useMemo(
+    () =>
+      filterHistoryItems(history, {
+        query,
+        carId: selectedCarId,
+      }),
+    [history, query, selectedCarId]
+  );
+
   return (
     <SafeAreaView style={globalStyles.screen}>
       <View style={styles.container}>
         <Text style={styles.title}>Parking History</Text>
         <Text style={styles.subtitle}>
-          View your past parked locations, time spent, and lot info.
+          Search past sessions by car, garage, address, or date.
         </Text>
+
+        <View style={styles.searchRow}>
+          <View style={styles.searchWrap}>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search history"
+              placeholderTextColor="#888"
+              value={query}
+              onChangeText={setQuery}
+              autoCapitalize="none"
+              autoCorrect={false}
+              clearButtonMode="while-editing"
+            />
+          </View>
+
+          {carOptions.length > 1 ? (
+            <TouchableOpacity
+              style={styles.filterButton}
+              activeOpacity={0.85}
+              onPress={() => setCarFilterOpen(true)}
+            >
+              <Ionicons name="car-outline" size={14} color="#444" />
+              <Text style={styles.filterButtonText} numberOfLines={1}>
+                {selectedCarId === 'all' ? 'All' : selectedCarLabel}
+              </Text>
+              <Ionicons name="chevron-down" size={12} color="#666" />
+            </TouchableOpacity>
+          ) : null}
+        </View>
+
+        <Modal
+          visible={carFilterOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setCarFilterOpen(false)}
+        >
+          <Pressable
+            style={styles.modalBackdrop}
+            onPress={() => setCarFilterOpen(false)}
+          >
+            <Pressable style={styles.modalSheet} onPress={() => {}}>
+              <Text style={styles.modalTitle}>Filter by car</Text>
+
+              <ScrollView
+                style={styles.modalList}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                {carOptions.map((option) => {
+                  const isSelected = selectedCarId === option.id;
+
+                  return (
+                    <TouchableOpacity
+                      key={option.id}
+                      style={[
+                        styles.modalOption,
+                        isSelected && styles.modalOptionSelected,
+                      ]}
+                      activeOpacity={0.85}
+                      onPress={() => {
+                        setSelectedCarId(option.id);
+                        setCarFilterOpen(false);
+                      }}
+                    >
+                      <Text
+                        style={[
+                          styles.modalOptionText,
+                          isSelected && styles.modalOptionTextSelected,
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {option.label}
+                      </Text>
+                      {isSelected ? (
+                        <Ionicons name="checkmark" size={18} color="#111" />
+                      ) : null}
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </Pressable>
+          </Pressable>
+        </Modal>
 
         <ScrollView
           contentContainerStyle={[
@@ -26,6 +143,7 @@ export default function HistoryScreen({
             { paddingBottom: tabBarHeight + 20 },
           ]}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
           {history.length === 0 ? (
             <View style={styles.emptyCard}>
@@ -34,59 +152,60 @@ export default function HistoryScreen({
                 Your past parking sessions will show here.
               </Text>
             </View>
+          ) : filteredHistory.length === 0 ? (
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyTitle}>No matches</Text>
+              <Text style={styles.emptyText}>
+                Try a different search or car filter.
+              </Text>
+            </View>
           ) : (
-            history.map((item) => (
-              <View key={item.id} style={styles.card}>
-                <View style={styles.cardHeader}>
-                  <View>
-                    <Text style={styles.carName}>{item.carName}</Text>
-                    <Text style={styles.plate}>{item.licensePlate}</Text>
+            filteredHistory.map((item) => {
+              const location = getHistoryLocationDisplay(item);
+
+              return (
+                <View key={item.id} style={styles.card}>
+                  <View style={styles.cardTopRow}>
+                    <View style={styles.cardTitleBlock}>
+                      <Text style={styles.carName} numberOfLines={1}>
+                        {item.carName}
+                      </Text>
+                      {!!item.licensePlate && (
+                        <Text style={styles.plate}>{item.licensePlate}</Text>
+                      )}
+                    </View>
+
+                    <View style={styles.cardMetaBlock}>
+                      {item.isActive ? (
+                        <View style={styles.activeBadge}>
+                          <Text style={styles.activeBadgeText}>Active</Text>
+                        </View>
+                      ) : null}
+                      <Text style={styles.duration}>{item.duration}</Text>
+                    </View>
                   </View>
 
-                  <View style={styles.dateBadge}>
-                    <Text style={styles.dateBadgeText}>{item.date}</Text>
-                  </View>
-                </View>
-
-                <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>Lot Info</Text>
-                  <Text style={styles.infoText}>{item.lotName}</Text>
-                  <Text style={styles.infoSubtext}>{item.address}</Text>
-                  <Text style={styles.infoSubtext}>
-                    {item.level} • Spot {item.spot}
+                  <Text style={styles.locationLabel} numberOfLines={1}>
+                    {location.label}
                   </Text>
-                </View>
+                  {!!location.detail && (
+                    <Text style={styles.locationDetail} numberOfLines={2}>
+                      {location.detail}
+                    </Text>
+                  )}
 
-                <View style={styles.detailsRow}>
-                  <View style={styles.detailBox}>
-                    <Text style={styles.detailLabel}>Start</Text>
-                    <Text style={styles.detailValue}>{item.startTime}</Text>
-                  </View>
-
-                  <View style={styles.detailBox}>
-                    <Text style={styles.detailLabel}>End</Text>
-                    <Text style={styles.detailValue}>{item.endTime}</Text>
-                  </View>
-                </View>
-
-                <View style={styles.detailsRow}>
-                  <View style={styles.detailBox}>
-                    <Text style={styles.detailLabel}>Time Spent</Text>
-                    <Text style={styles.detailValue}>{item.duration}</Text>
-                  </View>
-
-                  <View style={styles.detailBox}>
-                    <Text style={styles.detailLabel}>Rate</Text>
-                    <Text style={styles.detailValue}>{item.rate}</Text>
+                  <View style={styles.cardBottomRow}>
+                    <Text style={styles.timeText} numberOfLines={1}>
+                      {item.date} · {item.startTime}
+                      {item.endTime ? ` – ${item.endTime}` : ''}
+                    </Text>
+                    {item.rate ? (
+                      <Text style={styles.rateText}>{item.rate}</Text>
+                    ) : null}
                   </View>
                 </View>
-
-                <View style={styles.totalRow}>
-                  <Text style={styles.totalLabel}>Total</Text>
-                  <Text style={styles.totalValue}>{item.total}</Text>
-                </View>
-              </View>
-            ))
+              );
+            })
           )}
         </ScrollView>
       </View>
@@ -101,18 +220,113 @@ const styles = StyleSheet.create({
   },
 
   title: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '700',
     color: '#000',
     marginTop: 10,
   },
 
   subtitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#666',
-    marginTop: 6,
-    marginBottom: 18,
-    lineHeight: 20,
+    marginTop: 4,
+    marginBottom: 12,
+    lineHeight: 18,
+  },
+
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+
+  searchWrap: {
+    flex: 1,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: colors.surface,
+    paddingHorizontal: 12,
+    justifyContent: 'center',
+  },
+
+  searchInput: {
+    fontSize: 15,
+    color: '#111',
+    padding: 0,
+    margin: 0,
+  },
+
+  filterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    height: 40,
+    maxWidth: 118,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    backgroundColor: colors.surface,
+  },
+
+  filterButtonText: {
+    flexShrink: 1,
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#111',
+  },
+
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.35)',
+    justifyContent: 'flex-end',
+  },
+
+  modalSheet: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    paddingTop: 14,
+    paddingHorizontal: spacing.screen,
+    paddingBottom: 28,
+    maxHeight: '55%',
+  },
+
+  modalTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#111',
+    marginBottom: 8,
+  },
+
+  modalList: {
+    flexGrow: 0,
+  },
+
+  modalOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#ececec',
+  },
+
+  modalOptionSelected: {
+    backgroundColor: '#f7f7f7',
+    marginHorizontal: -spacing.screen,
+    paddingHorizontal: spacing.screen,
+  },
+
+  modalOptionText: {
+    flex: 1,
+    fontSize: 15,
+    color: '#222',
+    paddingRight: 12,
+  },
+
+  modalOptionTextSelected: {
+    fontWeight: '700',
+    color: '#111',
   },
 
   scrollContent: {
@@ -120,133 +334,115 @@ const styles = StyleSheet.create({
   },
 
   emptyCard: {
-    backgroundColor: '#f8f8f8',
-    borderRadius: radius.large,
-    padding: 20,
+    backgroundColor: colors.surface,
+    borderRadius: radius.medium,
+    padding: 16,
     alignItems: 'center',
-    ...shadow.card,
+    ...shadow.soft,
   },
 
   emptyTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     color: '#111',
-    marginBottom: 6,
+    marginBottom: 4,
   },
 
   emptyText: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#666',
     textAlign: 'center',
   },
 
   card: {
-    backgroundColor: '#f8f8f8',
-    borderRadius: radius.large,
-    padding: 16,
-    marginBottom: 14,
-    ...shadow.card,
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 8,
+    ...shadow.soft,
   },
 
-  cardHeader: {
+  cardTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 14,
+    marginBottom: 4,
+  },
+
+  cardTitleBlock: {
+    flex: 1,
+    paddingRight: 10,
+  },
+
+  cardMetaBlock: {
+    alignItems: 'flex-end',
   },
 
   carName: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: '700',
     color: '#111',
   },
 
   plate: {
-    fontSize: 13,
+    fontSize: 11,
     color: '#666',
-    marginTop: 4,
+    marginTop: 2,
     fontWeight: '600',
   },
 
-  dateBadge: {
-    backgroundColor: '#fff',
+  activeBadge: {
+    backgroundColor: '#dcfce7',
     borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    marginBottom: 4,
   },
 
-  dateBadgeText: {
-    fontSize: 12,
+  activeBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#166534',
+  },
+
+  duration: {
+    fontSize: 13,
     fontWeight: '700',
     color: '#111',
   },
 
-  section: {
-    marginBottom: 14,
-  },
-
-  sectionTitle: {
+  locationLabel: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#444',
+    color: '#222',
+    marginBottom: 2,
+  },
+
+  locationDetail: {
+    fontSize: 12,
+    color: '#666',
+    lineHeight: 16,
     marginBottom: 6,
   },
 
-  infoText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#111',
-    marginBottom: 4,
-  },
-
-  infoSubtext: {
-    fontSize: 13,
-    color: '#666',
-    lineHeight: 18,
-  },
-
-  detailsRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 10,
-  },
-
-  detailBox: {
-    flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 12,
-  },
-
-  detailLabel: {
-    fontSize: 12,
-    color: '#666',
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-
-  detailValue: {
-    fontSize: 15,
-    color: '#111',
-    fontWeight: '700',
-  },
-
-  totalRow: {
-    marginTop: 6,
+  cardBottomRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 8,
   },
 
-  totalLabel: {
-    fontSize: 14,
-    color: '#666',
+  timeText: {
+    flex: 1,
+    fontSize: 11,
+    color: '#777',
     fontWeight: '600',
   },
 
-  totalValue: {
-    fontSize: 18,
-    color: '#000',
+  rateText: {
+    fontSize: 11,
+    color: '#444',
     fontWeight: '700',
   },
 });

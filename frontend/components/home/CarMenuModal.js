@@ -10,11 +10,16 @@ import { shadow } from '../../styles/global';
 
 export default function CarMenuModal({
   visible,
+  menuCar,
   carName,
+  isTracked = false,
   onClose,
   onEdit,
+  onTrack,
   onRemove,
 }) {
+  const title = carName || menuCar?.title || 'Vehicle';
+
   return (
     <Modal
       visible={visible}
@@ -24,7 +29,19 @@ export default function CarMenuModal({
     >
       <Pressable style={styles.menuOverlay} onPress={onClose}>
         <Pressable style={styles.menuSheet} onPress={() => {}}>
-          <Text style={styles.menuTitle}>{carName}</Text>
+          <Text style={styles.menuTitle}>{title}</Text>
+
+          <TouchableOpacity
+            style={styles.menuAction}
+            activeOpacity={0.85}
+            onPress={onTrack}
+          >
+            <Text style={styles.menuActionText}>
+              {isTracked
+                ? 'Driving with this car'
+                : 'Drive with this car'}
+            </Text>
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.menuAction}

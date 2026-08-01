@@ -55,6 +55,11 @@ class UserPlace(BaseModel):
     country: str | None = None
 
 
+class ChatImageAttachment(BaseModel):
+    mime_type: str = Field(default="image/jpeg")
+    data: str = Field(min_length=1, description="Base64-encoded image bytes")
+
+
 class ParkingChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=3000)
     history: list[ParkingChatMessage] = Field(default_factory=list)
@@ -63,6 +68,7 @@ class ParkingChatRequest(BaseModel):
         default=None,
         description="Optional fallback when city/area cannot be resolved",
     )
+    images: list[ChatImageAttachment] = Field(default_factory=list)
 
 
 class ParkingChatResponse(BaseModel):
@@ -112,11 +118,41 @@ def _format_user_message_with_context(
     )
 
 
+def _build_user_message_content(
+    message: str,
+    user_place: UserPlace | None,
+    user_location: UserLocation | None,
+    images: list[ChatImageAttachment] | None = None,
+) -> str | list[dict]:
+    text = _format_user_message_with_context(
+        message, user_place, user_location
+    )
+
+    if not images:
+        return text
+
+    content: list[dict] = [{"type": "text", "text": text}]
+
+    for image in images:
+        mime_type = (image.mime_type or "image/jpeg").strip() or "image/jpeg"
+        content.append(
+            {
+                "type": "image_url",
+                "image_url": {
+                    "url": f"data:{mime_type};base64,{image.data}",
+                },
+            }
+        )
+
+    return content
+
+
 def _call_openai(
     message: str,
     history: list[ParkingChatMessage],
     user_place: UserPlace | None = None,
     user_location: UserLocation | None = None,
+    images: list[ChatImageAttachment] | None = None,
 ) -> str:
     if not OPENAI_API_KEY:
         raise HTTPException(
@@ -124,8 +160,8 @@ def _call_openai(
             detail="OPENAI_API_KEY is missing. Add it to backend .env.",
         )
 
-    user_content = _format_user_message_with_context(
-        message, user_place, user_location
+    user_content = _build_user_message_content(
+        message, user_place, user_location, images
     )
 
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]
@@ -182,5 +218,6 @@ async def parking_chat(request: ParkingChatRequest):
         request.history,
         request.user_place,
         request.user_location,
+        request.images,
     )
     return ParkingChatResponse(reply=reply)

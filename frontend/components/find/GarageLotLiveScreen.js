@@ -12,7 +12,7 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { getLiveFramePredictions } from '../../api/prediction';
-import { spacing, radius, shadow } from '../../styles/global';
+import { spacing, radius, shadow, colors } from '../../styles/global';
 
 const { width: WINDOW_WIDTH } = Dimensions.get('window');
 const H_PADDING = spacing.screen;
@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
   },
   legend: {
     flexDirection: 'row',
-    backgroundColor: '#f8f8f8',
+    backgroundColor: colors.surface,
     borderRadius: radius.medium,
     paddingVertical: 10,
     paddingHorizontal: 14,

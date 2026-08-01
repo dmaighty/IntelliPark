@@ -1,6 +1,6 @@
 from typing import Optional
 from datetime import datetime
-from sqlalchemy import String, Integer, DateTime, ForeignKey
+from sqlalchemy import String, Integer, DateTime, ForeignKey, Text, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
@@ -14,6 +14,8 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[str] = mapped_column(String(20), nullable=False)  # driver / admin
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    profile_image_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    profile_image_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     driver = relationship("Driver", back_populates="user", uselist=False)
     admin = relationship("Admin", back_populates="user", uselist=False)

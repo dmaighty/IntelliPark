@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { defaultGarages } from '../data/defaultGarages';
 
 export const DEFAULT_COORDS = {
   latitude: 37.3352,
@@ -28,7 +29,11 @@ export const getDistanceMiles = (a, b) => {
 };
 
 export const buildDirectionsUrl = (garage) => {
-  const destination = `${garage.latitude},${garage.longitude}`;
+  return buildDirectionsUrlForPoint(garage.latitude, garage.longitude);
+};
+
+export const buildDirectionsUrlForPoint = (latitude, longitude) => {
+  const destination = `${latitude},${longitude}`;
 
   if (Platform.OS === 'ios') {
     return `http://maps.apple.com/?daddr=${destination}&dirflg=d`;
@@ -60,7 +65,7 @@ export const mapParkingLotApiToGarage = (row) => {
   const lng =
     row.longitude != null ? Number(row.longitude) : DEFAULT_COORDS.longitude;
 
-  return {
+  return enrichGarageWithDefaults({
     id: String(row.id),
     name: row.name ?? '',
     address: row.address ?? '',
@@ -75,5 +80,31 @@ export const mapParkingLotApiToGarage = (row) => {
     levels: [],
     lotType: row.lot_type ?? '',
     totalSpaces: row.total_spaces ?? 0,
+  });
+};
+
+export const enrichGarageWithDefaults = (garage) => {
+  if (!garage) {
+    return garage;
+  }
+
+  const match = defaultGarages.find(
+    (item) =>
+      String(item.id) === String(garage.id) ||
+      item.name === garage.name
+  );
+
+  if (!match) {
+    return garage;
+  }
+
+  return {
+    ...garage,
+    levels: garage.levels?.length ? garage.levels : match.levels || [],
+    peakTimes: garage.peakTimes?.length ? garage.peakTimes : match.peakTimes || [],
+    details: garage.details || match.details || '',
+    schedule: garage.schedule || match.schedule || '',
+    ratePerHour: garage.ratePerHour || match.ratePerHour || '',
+    rating: garage.rating || match.rating || 0,
   };
 };

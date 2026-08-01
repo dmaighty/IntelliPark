@@ -12,6 +12,7 @@ class UserOut(BaseModel):
     role: str
     created_at: datetime
     phone: str | None = None
+    profile_image_url: str | None = None
 
 
 class UserRegisterIn(BaseModel):
@@ -37,6 +38,33 @@ class UserUpdateIn(BaseModel):
     full_name: str | None = None
     email: EmailStr | None = None
     phone: str | None = None
+    profile_image_url: str | None = None
+
+
+class PasswordResetEmailResponse(BaseModel):
+    message: str
+    email: str
+    dev_reset_link: str | None = None
+
+
+class PasswordResetSmsSendResponse(BaseModel):
+    message: str
+    phone: str
+    dev_code: str | None = None
+
+
+class PasswordResetSmsConfirmIn(BaseModel):
+    code: str = Field(..., min_length=4, max_length=8)
+    new_password: str = Field(..., min_length=8, max_length=20)
+
+
+class PasswordResetTokenConfirmIn(BaseModel):
+    token: str = Field(..., min_length=8)
+    new_password: str = Field(..., min_length=8, max_length=20)
+
+
+class PasswordResetConfirmResponse(BaseModel):
+    message: str
 
 
 class DriverOut(BaseModel):

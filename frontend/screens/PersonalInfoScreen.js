@@ -12,7 +12,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { globalStyles, spacing, radius, shadow } from '../styles/global';
+import { globalStyles, spacing, radius, shadow, colors } from '../styles/global';
 import { getMyProfile, updateMyProfile } from '../api/users';
 
 function splitFullName(full) {
@@ -23,13 +23,26 @@ function splitFullName(full) {
   return { first: t.slice(0, i).trim(), last: t.slice(i + 1).trim() };
 }
 
+function isEmailValid(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
+}
+
+function Field({ label, children, isLast = false }) {
+  return (
+    <View style={[styles.fieldBlock, !isLast && styles.fieldBlockBorder]}>
+      <Text style={styles.label}>{label}</Text>
+      {children}
+    </View>
+  );
+}
+
 export default function PersonalInfoScreen({ accessToken, onBack, onSaved }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [mobile, setMobile] = useState('');
-  const [emailReadOnly, setEmailReadOnly] = useState('');
+  const [email, setEmail] = useState('');
 
   useEffect(() => {
     const load = async () => {
@@ -47,7 +60,7 @@ export default function PersonalInfoScreen({ accessToken, onBack, onSaved }) {
         setFirstName(first);
         setLastName(last);
         setMobile(data?.phone || '');
-        setEmailReadOnly(data?.email || '');
+        setEmail(data?.email || '');
       } catch (e) {
         Alert.alert('Could not load profile', e.message || 'Unknown error');
       } finally {
@@ -58,23 +71,33 @@ export default function PersonalInfoScreen({ accessToken, onBack, onSaved }) {
   }, [accessToken]);
 
   const fullName = [firstName.trim(), lastName.trim()].filter(Boolean).join(' ');
-  const isValid = fullName.length > 0;
+  const trimmedEmail = email.trim().toLowerCase();
+  const isValid =
+    fullName.length > 0 && trimmedEmail.length > 0 && isEmailValid(trimmedEmail);
 
   const handleSave = async () => {
-    if (!isValid) {
+    if (!firstName.trim() || !lastName.trim()) {
       Alert.alert('Name required', 'Please enter your first and last name.');
       return;
     }
-    if (!accessToken) return;
+
+    if (!isEmailValid(trimmedEmail)) {
+      Alert.alert('Invalid email', 'Please enter a valid email address.');
+      return;
+    }
+
+    if (!accessToken) {
+      return;
+    }
+
     setSaving(true);
     try {
       const updated = await updateMyProfile(accessToken, {
         full_name: fullName,
+        email: trimmedEmail,
         phone: mobile.trim() === '' ? '' : mobile.trim(),
       });
-      if (onSaved) {
-        onSaved(updated);
-      }
+      onSaved?.(updated);
     } catch (e) {
       Alert.alert('Could not save', e.message || 'Unknown error');
     } finally {
@@ -108,48 +131,56 @@ export default function PersonalInfoScreen({ accessToken, onBack, onSaved }) {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            <View style={styles.fieldCard}>
-              <Text style={styles.label}>First name</Text>
-              <TextInput
-                style={styles.input}
-                value={firstName}
-                onChangeText={setFirstName}
-                placeholder="First name"
-                placeholderTextColor="#999"
-                autoCapitalize="words"
-              />
-            </View>
+            <Text style={styles.intro}>
+              Update your account details. Changes are saved to your profile.
+            </Text>
 
-            <View style={styles.fieldCard}>
-              <Text style={styles.label}>Last name</Text>
-              <TextInput
-                style={styles.input}
-                value={lastName}
-                onChangeText={setLastName}
-                placeholder="Last name"
-                placeholderTextColor="#999"
-                autoCapitalize="words"
-              />
-            </View>
+            <View style={styles.formCard}>
+              <Field label="First name">
+                <TextInput
+                  style={styles.input}
+                  value={firstName}
+                  onChangeText={setFirstName}
+                  placeholder="First name"
+                  placeholderTextColor="#999"
+                  autoCapitalize="words"
+                />
+              </Field>
 
-            <View style={styles.fieldCard}>
-              <Text style={styles.label}>Mobile</Text>
-              <TextInput
-                style={styles.input}
-                value={mobile}
-                onChangeText={setMobile}
-                placeholder="Phone number"
-                placeholderTextColor="#999"
-                keyboardType="phone-pad"
-              />
-            </View>
+              <Field label="Last name">
+                <TextInput
+                  style={styles.input}
+                  value={lastName}
+                  onChangeText={setLastName}
+                  placeholder="Last name"
+                  placeholderTextColor="#999"
+                  autoCapitalize="words"
+                />
+              </Field>
 
-            <View style={styles.fieldCard}>
-              <Text style={styles.label}>Email</Text>
-              <Text style={styles.emailValue}>{emailReadOnly || '—'}</Text>
-              <Text style={styles.emailHint}>
-                Email cannot be changed here yet.
-              </Text>
+              <Field label="Mobile">
+                <TextInput
+                  style={styles.input}
+                  value={mobile}
+                  onChangeText={setMobile}
+                  placeholder="Phone number"
+                  placeholderTextColor="#999"
+                  keyboardType="phone-pad"
+                />
+              </Field>
+
+              <Field label="Email" isLast>
+                <TextInput
+                  style={styles.input}
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="Email address"
+                  placeholderTextColor="#999"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </Field>
             </View>
 
             <TouchableOpacity
@@ -161,7 +192,7 @@ export default function PersonalInfoScreen({ accessToken, onBack, onSaved }) {
               {saving ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.saveButtonText}>Save</Text>
+                <Text style={styles.saveButtonText}>Save changes</Text>
               )}
             </TouchableOpacity>
           </ScrollView>
@@ -177,7 +208,7 @@ const styles = StyleSheet.create({
   },
   topSection: {
     marginTop: 10,
-    marginBottom: 10,
+    marginBottom: 8,
     paddingHorizontal: spacing.screen,
   },
   topBar: {
@@ -197,57 +228,58 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.screen,
     paddingBottom: 40,
   },
+  intro: {
+    fontSize: 13,
+    color: '#666',
+    lineHeight: 18,
+    marginBottom: 12,
+  },
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  fieldCard: {
-    backgroundColor: '#f8f8f8',
+  formCard: {
+    backgroundColor: colors.surface,
     borderRadius: radius.medium,
-    paddingVertical: 18,
-    paddingHorizontal: 18,
-    marginBottom: spacing.medium,
+    paddingHorizontal: 14,
+    paddingVertical: 4,
     ...shadow.soft,
   },
+  fieldBlock: {
+    paddingVertical: 10,
+  },
+  fieldBlockBorder: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#e5e5e5',
+  },
   label: {
-    fontSize: 15,
+    fontSize: 12,
     fontWeight: '600',
-    color: '#000',
-    marginBottom: 10,
+    color: '#666',
+    marginBottom: 4,
   },
   input: {
-    height: 52,
-    borderRadius: 16,
-    backgroundColor: '#f0f0f0',
-    paddingHorizontal: 16,
-    fontSize: 16,
+    minHeight: 36,
+    paddingHorizontal: 0,
+    paddingVertical: 2,
+    fontSize: 15,
     color: '#111',
   },
-  emailValue: {
-    fontSize: 16,
-    color: '#444',
-    fontWeight: '500',
-  },
-  emailHint: {
-    marginTop: 8,
-    fontSize: 13,
-    color: '#888',
-  },
   saveButton: {
-    height: 56,
+    height: 44,
     borderRadius: radius.medium,
     backgroundColor: '#000',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: spacing.small,
+    marginTop: 14,
     ...shadow.soft,
   },
   saveButtonDisabled: {
     opacity: 0.55,
   },
   saveButtonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
     color: '#fff',
   },

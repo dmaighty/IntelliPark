@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     secret_key: str = "dev-secret-change-in-production"
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 3000
+    password_reset_base_url: str = "intellipark://reset-password"
 
     model_config = SettingsConfigDict(
         env_file=str(_REPO_ROOT / ".env"),

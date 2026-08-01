@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useCallback } from 'react';
 import {
   SafeAreaView,
   View,
@@ -7,9 +7,12 @@ import {
   Animated,
   Dimensions,
   StyleSheet,
+  Text,
 } from 'react-native';
 
 import { globalStyles, spacing } from '../styles/global';
+import { getProfileImageSource } from '../utils/profileImage';
+import { pickChatImage } from '../utils/chatAttachments';
 
 import CarCarousel from '../components/home/CarCarousel';
 import MapSection from '../components/home/MapSection';
@@ -22,6 +25,7 @@ import useHomeCars from '../hooks/useHomeCars';
 import useHomeMap from '../hooks/useHomeMap';
 
 import { DEFAULT_COORDS } from '../utils/mapUtils';
+import { getCarDisplayName } from '../utils/carUtils';
 
 const { width } = Dimensions.get('window');
 
@@ -30,18 +34,48 @@ const SNAP_INTERVAL = CARD_WIDTH + spacing.cardGap;
 
 export default function HomeScreen({
   cars = [],
+  trackedCarId = null,
+  onTrackCar,
+  profileImageUrl = null,
   onProfilePress,
   onFindPress,
   onChatPress,
+  chatDraft = { message: '', images: [] },
+  setChatDraft,
   onAddCarPress,
   onEditCarPress,
   onRemoveCarPress,
   tabBarHeight = 100,
 }) {
-  const scrollX = useRef(new Animated.Value(0)).current;
-  const scrollViewRef = useRef(null);
+  const scrollX = React.useRef(new Animated.Value(0)).current;
+  const scrollViewRef = React.useRef(null);
 
-  const [message, setMessage] = useState('');
+  const message = chatDraft.message || '';
+  const images = chatDraft.images || [];
+
+  const setMessage = useCallback(
+    (nextMessage) => {
+      setChatDraft?.((prev) => ({
+        ...prev,
+        message: typeof nextMessage === 'function'
+          ? nextMessage(prev.message || '')
+          : nextMessage,
+      }));
+    },
+    [setChatDraft]
+  );
+
+  const setImages = useCallback(
+    (updater) => {
+      setChatDraft?.((prev) => ({
+        ...prev,
+        images: typeof updater === 'function'
+          ? updater(prev.images || [])
+          : updater,
+      }));
+    },
+    [setChatDraft]
+  );
 
   const {
     locationGranted,
@@ -52,7 +86,6 @@ export default function HomeScreen({
     composerBoxMinHeight,
     composerSheetHeight,
     floatingButtonBottom,
-    openSheet,
   } = useKeyboardSheet(tabBarHeight);
 
   const {
@@ -71,7 +104,7 @@ export default function HomeScreen({
     onRemoveCarPress,
   });
 
-  const firstMapCoordinate = useMemo(() => {
+  const firstMapCoordinate = React.useMemo(() => {
     return (
       visibleCars[0]?.parkedLocation ||
       DEFAULT_COORDS
@@ -92,16 +125,39 @@ export default function HomeScreen({
     userLocation,
   });
 
-  const handleInputFocus = () => {
-    openSheet();
-    onChatPress?.();
-  };
+  const handleOpenChat = useCallback(
+    (options = {}) => {
+      onChatPress?.(options);
+    },
+    [onChatPress]
+  );
 
-  /*
-   * Called when the user taps an existing carousel card.
-   * This sends that car to the same edit handler used by
-   * the three-dot menu.
-   */
+  const handleAddImage = useCallback(async () => {
+    const picked = await pickChatImage();
+
+    if (picked) {
+      setImages((prev) => [...prev, picked]);
+    }
+  }, [setImages]);
+
+  const handleRemoveImage = useCallback(
+    (imageId) => {
+      setImages((prev) => prev.filter((image) => image.id !== imageId));
+    },
+    [setImages]
+  );
+
+  const handleSendFromHome = useCallback(() => {
+    const trimmed = message.trim();
+
+    if (!trimmed && images.length === 0) {
+      handleOpenChat();
+      return;
+    }
+
+    onChatPress?.({ send: true });
+  }, [message, images.length, handleOpenChat, onChatPress]);
+
   const handleCarCardPress = (car) => {
     if (!car || car.isAddCard) {
       return;
@@ -143,16 +199,19 @@ export default function HomeScreen({
     <SafeAreaView style={globalStyles.screen}>
       <View style={styles.screenContent}>
         <View style={globalStyles.headerRow}>
-          <TouchableOpacity
-            style={globalStyles.profileCircle}
-            onPress={onProfilePress}
-            activeOpacity={0.85}
-          >
-            <Image
-              source={require('../assets/profile.png')}
-              style={globalStyles.profileImage}
-            />
-          </TouchableOpacity>
+          <View style={styles.headerLeft}>
+            <TouchableOpacity
+              style={globalStyles.profileCircle}
+              onPress={onProfilePress}
+              activeOpacity={0.85}
+            >
+              <Image
+                source={getProfileImageSource(profileImageUrl)}
+                style={globalStyles.profileImage}
+              />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Intellipark</Text>
+          </View>
         </View>
 
         <CarCarousel
@@ -161,13 +220,7 @@ export default function HomeScreen({
           scrollViewRef={scrollViewRef}
           onAddCarPress={onAddCarPress}
           onOpenMenu={openMenu}
-
-          /*
-           * This was missing.
-           * It makes the whole car card open the edit screen.
-           */
           onCarPress={handleCarCardPress}
-
           onScrollToCard={scrollToCard}
           onCardSnap={handleCardSnap}
         />
@@ -192,15 +245,30 @@ export default function HomeScreen({
           tabBarHeight={tabBarHeight}
           message={message}
           setMessage={setMessage}
-          onInputFocus={handleInputFocus}
-          onChatPress={onChatPress}
+          images={images}
+          onAddImage={handleAddImage}
+          onRemoveImage={handleRemoveImage}
+          onSend={handleSendFromHome}
+          onOpenChat={handleOpenChat}
         />
       </View>
 
       <CarMenuModal
         visible={Boolean(menuCar)}
         menuCar={menuCar}
+        carName={menuCar ? getCarDisplayName(menuCar) : ''}
+        isTracked={
+          menuCar &&
+          trackedCarId != null &&
+          String(menuCar.id) === String(trackedCarId)
+        }
         onClose={closeMenu}
+        onTrack={() => {
+          if (menuCar) {
+            onTrackCar?.(menuCar.id);
+          }
+          closeMenu();
+        }}
         onEdit={handleEditCar}
         onRemove={handleRemoveCar}
       />
@@ -211,5 +279,17 @@ export default function HomeScreen({
 const styles = StyleSheet.create({
   screenContent: {
     flex: 1,
+  },
+
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#000',
   },
 });

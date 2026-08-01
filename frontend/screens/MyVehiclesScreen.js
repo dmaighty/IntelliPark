@@ -9,7 +9,7 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
-import { globalStyles, spacing, radius, shadow } from '../styles/global';
+import { globalStyles, spacing, radius, shadow, colors } from '../styles/global';
 import { getCarDisplayName, getCarSubtitle } from '../utils/carUtils';
 import CarMenuModal from '../components/home/CarMenuModal';
 
@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
   },
 
   emptyCard: {
-    backgroundColor: '#f8f8f8',
+    backgroundColor: colors.surface,
     borderRadius: radius.medium,
     padding: 20,
     marginBottom: spacing.medium,
@@ -167,7 +167,7 @@ const styles = StyleSheet.create({
   },
 
   carCard: {
-    backgroundColor: '#f8f8f8',
+    backgroundColor: colors.surface,
     borderRadius: radius.medium,
     padding: 14,
     marginBottom: spacing.medium,

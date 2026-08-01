@@ -11,84 +11,38 @@ import {
   Alert,
 } from 'react-native';
 
-import {
-  globalStyles,
-  spacing,
-  radius,
-  shadow,
-} from '../styles/global';
+import { globalStyles, spacing, radius, shadow, colors } from '../styles/global';
+import { getCarImages } from '../data/carImages';
+import { hydrateCar, normalizeColorId, normalizeLicensePlate, isValidLicensePlate, getLicensePlateValidationMessage, generateRandomParkedLocation } from '../utils/carUtils';
 
-const carColors = [
-  {
-    id: 'black',
-    label: 'Black',
-    swatch: '#111111',
-
-    // Carousel and edit screen
-    image: require('../assets/car-black.png'),
-
-    // Map marker
-    parkedImage: require('../assets/parked-black-car.png'),
-  },
-  {
-    id: 'white',
-    label: 'White',
-    swatch: '#F5F5F5',
-
-    image: require('../assets/car-white.png'),
-    parkedImage: require('../assets/parked-white-car.png'),
-  },
-  {
-    id: 'red',
-    label: 'Red',
-    swatch: '#D92D20',
-
-    image: require('../assets/car-red.png'),
-    parkedImage: require('../assets/parked-red-car.png'),
-  },
-  {
-    id: 'blue',
-    label: 'Blue',
-    swatch: '#369FD9',
-
-    image: require('../assets/car-blue.png'),
-    parkedImage: require('../assets/parked-blue-car.png'),
-  },
-  {
-    id: 'silver',
-    label: 'Silver',
-    swatch: '#A1A1A1',
-
-    image: require('../assets/car-silver.png'),
-    parkedImage: require('../assets/parked-silver-car.png'),
-  },
-  {
-    id: 'yellow',
-    label: 'Yellow',
-    swatch: '#F8BF01',
-
-    image: require('../assets/car-yellow.png'),
-    parkedImage: require('../assets/parked-yellow-car.png'),
-  },
+const baseCarColors = [
+  { id: 'black', label: 'Black', swatch: '#111111' },
+  { id: 'white', label: 'White', swatch: '#F5F5F5' },
+  { id: 'red', label: 'Red', swatch: '#D92D20' },
+  { id: 'blue', label: 'Blue', swatch: '#369FD9' },
+  { id: 'silver', label: 'Silver', swatch: '#A1A1A1' },
+  { id: 'yellow', label: 'Yellow', swatch: '#F8BF01' },
 ];
+
+const carColors = baseCarColors.map((color) => ({
+  ...color,
+  ...getCarImages(color.id),
+}));
 
 const getMatchingColor = (car) => {
   if (!car) {
     return carColors[0];
   }
 
-  const normalizedColorId = String(car.colorId || '')
-    .trim()
-    .toLowerCase();
-
-  const normalizedColorLabel = String(car.color || '')
-    .trim()
-    .toLowerCase();
+  const normalizedColor = normalizeColorId(
+    car.colorId || car.color_id || car.color,
+    ''
+  );
 
   return (
-    carColors.find((color) => color.id === normalizedColorId) ||
+    carColors.find((color) => color.id === normalizedColor) ||
     carColors.find(
-      (color) => color.label.toLowerCase() === normalizedColorLabel
+      (color) => color.label.toLowerCase() === normalizedColor
     ) ||
     carColors[0]
   );
@@ -97,19 +51,10 @@ const getMatchingColor = (car) => {
 export default function AddCarScreen({
   route,
   navigation,
-
-  // These props allow the screen to work without React Navigation too.
   initialCar: initialCarProp = null,
   onBack,
   onSave,
 }) {
-  /*
-   * When opened by pressing a carousel card, the car can be supplied through:
-   *
-   * navigation.navigate('AddCar', { initialCar: car })
-   *
-   * The initialCar prop remains supported for your existing setup.
-   */
   const initialCar =
     route?.params?.initialCar ||
     route?.params?.car ||
@@ -120,6 +65,7 @@ export default function AddCarScreen({
   const [make, setMake] = useState('');
   const [year, setYear] = useState('');
   const [licensePlate, setLicensePlate] = useState('');
+  const [bluetoothDeviceName, setBluetoothDeviceName] = useState('');
   const [selectedColor, setSelectedColor] = useState(carColors[0]);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -130,23 +76,27 @@ export default function AddCarScreen({
       setCarName(
         initialCar.title ||
           initialCar.name ||
+          initialCar.car_name ||
           initialCar.make ||
           ''
       );
-
       setMake(
         initialCar.make ||
           initialCar.model ||
-          initialCar.title ||
+          initialCar.make_model ||
           ''
       );
-
       setYear(String(initialCar.year || ''));
-
       setLicensePlate(
-        String(initialCar.licensePlate || '').toUpperCase()
+        String(
+          initialCar.licensePlate || initialCar.license_plate || ''
+        ).toUpperCase()
       );
-
+      setBluetoothDeviceName(
+        initialCar.bluetoothDeviceName ||
+          initialCar.bluetooth_device_name ||
+          ''
+      );
       setSelectedColor(getMatchingColor(initialCar));
       return;
     }
@@ -155,6 +105,7 @@ export default function AddCarScreen({
     setMake('');
     setYear('');
     setLicensePlate('');
+    setBluetoothDeviceName('');
     setSelectedColor(carColors[0]);
   }, [initialCar]);
 
@@ -163,16 +114,10 @@ export default function AddCarScreen({
       carName.trim().length > 0 &&
       make.trim().length > 0 &&
       /^\d{4}$/.test(year.trim()) &&
-      licensePlate.trim().length > 0 &&
-      Boolean(selectedColor)
+      isValidLicensePlate(licensePlate) &&
+      Boolean(selectedColor?.id)
     );
-  }, [
-    carName,
-    make,
-    year,
-    licensePlate,
-    selectedColor,
-  ]);
+  }, [carName, make, year, licensePlate, selectedColor]);
 
   const handleBack = () => {
     if (typeof onBack === 'function') {
@@ -187,15 +132,10 @@ export default function AddCarScreen({
     const trimmedCarName = carName.trim();
     const trimmedMake = make.trim();
     const trimmedYear = year.trim();
-    const trimmedPlate = licensePlate
-      .trim()
-      .toUpperCase();
+    const trimmedPlate = normalizeLicensePlate(licensePlate);
 
     if (!trimmedCarName) {
-      Alert.alert(
-        'Missing car name',
-        'Please enter a name for this car.'
-      );
+      Alert.alert('Missing car name', 'Please enter a name for this car.');
       return;
     }
 
@@ -208,69 +148,58 @@ export default function AddCarScreen({
     }
 
     if (!/^\d{4}$/.test(trimmedYear)) {
-      Alert.alert(
-        'Invalid year',
-        'Please enter a valid 4-digit year.'
-      );
+      Alert.alert('Invalid year', 'Please enter a valid 4-digit year.');
       return;
     }
 
     if (!trimmedPlate) {
+      Alert.alert('Missing license plate', 'Please enter the license plate.');
+      return;
+    }
+
+    if (!isValidLicensePlate(trimmedPlate)) {
       Alert.alert(
-        'Missing license plate',
-        'Please enter the license plate.'
+        'Invalid license plate',
+        getLicensePlateValidationMessage(trimmedPlate)
       );
       return;
     }
 
-    const savedCar = {
-      /*
-       * Preserve tracking, Bluetooth, parking location,
-       * trip distance, and other existing properties.
-       */
+    const parkedLocation =
+      initialCar?.parkedLocation ||
+      initialCar?.parked_location ||
+      generateRandomParkedLocation(
+        initialCar?.id ?? trimmedPlate ?? trimmedCarName
+      );
+
+    const savedCar = hydrateCar({
       ...(initialCar || {}),
-
       id: initialCar?.id ?? Date.now(),
-
-      // User-editable display name
       title: trimmedCarName,
-
-      // Actual vehicle make/model
       make: trimmedMake,
-
       year: trimmedYear,
       licensePlate: trimmedPlate,
-
-      color: selectedColor.label,
+      license_plate: trimmedPlate,
       colorId: selectedColor.id,
-
-      // Carousel and details screen image
-      image: selectedColor.image,
-
-      // Map marker image
-      parkedImage: selectedColor.parkedImage,
-
-      // Defaults only apply to newly added cars
+      color_id: selectedColor.id,
+      color: selectedColor.id,
       status: initialCar?.status || 'parked',
-
       bluetoothDeviceId:
-        initialCar?.bluetoothDeviceId || null,
-
-      bluetoothDeviceName:
-        initialCar?.bluetoothDeviceName || null,
-
+        initialCar?.bluetoothDeviceId ||
+        initialCar?.bluetooth_device_id ||
+        bluetoothDeviceName.trim() ||
+        null,
+      bluetoothDeviceName: bluetoothDeviceName.trim() || null,
+      bluetooth_device_name: bluetoothDeviceName.trim() || null,
       tripStartedAt:
-        initialCar?.tripStartedAt || null,
-
+        initialCar?.tripStartedAt || initialCar?.trip_started_at || null,
       tripDistanceMeters:
-        initialCar?.tripDistanceMeters || 0,
-
-      parkedAt:
-        initialCar?.parkedAt || null,
-
-      parkedLocation:
-        initialCar?.parkedLocation || null,
-    };
+        initialCar?.tripDistanceMeters ??
+        initialCar?.trip_distance_meters ??
+        0,
+      parkedAt: initialCar?.parkedAt || initialCar?.parked_at || null,
+      parkedLocation,
+    });
 
     try {
       setIsSaving(true);
@@ -283,23 +212,13 @@ export default function AddCarScreen({
 
       Alert.alert(
         isEditing ? 'Car updated' : 'Car added',
-        `${trimmedCarName} was successfully ${
-          isEditing ? 'updated' : 'added'
-        }.`,
-        [
-          {
-            text: 'OK',
-            onPress: handleBack,
-          },
-        ]
+        `${trimmedCarName} was successfully ${isEditing ? 'updated' : 'added'}.`,
+        [{ text: 'OK', onPress: handleBack }]
       );
     } catch (error) {
-      console.error('Unable to save car:', error);
-
       Alert.alert(
         'Unable to save car',
-        error?.message ||
-          'Something went wrong while saving the car.'
+        error?.message || 'Something went wrong while saving the car.'
       );
     } finally {
       setIsSaving(false);
@@ -347,8 +266,7 @@ export default function AddCarScreen({
             </Text>
 
             <Text style={styles.heroSubtitle}>
-              {year || 'YYYY'}{' '}
-              {make.trim() || 'Make and model'}
+              {year || 'YYYY'} {make.trim() || 'Make and model'}
             </Text>
 
             <Text style={styles.heroSubtitle}>
@@ -402,11 +320,7 @@ export default function AddCarScreen({
               placeholderTextColor="#888"
               value={year}
               onChangeText={(text) => {
-                const numbersOnly = text.replace(
-                  /[^0-9]/g,
-                  ''
-                );
-
+                const numbersOnly = text.replace(/[^0-9]/g, '');
                 setYear(numbersOnly.slice(0, 4));
               }}
               keyboardType="number-pad"
@@ -423,16 +337,35 @@ export default function AddCarScreen({
               placeholderTextColor="#888"
               value={licensePlate}
               onChangeText={(text) => {
-                const cleanedPlate = text
-                  .replace(/[^a-zA-Z0-9 -]/g, '')
-                  .toUpperCase();
-
-                setLicensePlate(cleanedPlate);
+                setLicensePlate(normalizeLicensePlate(text));
               }}
               autoCapitalize="characters"
               autoCorrect={false}
-              maxLength={10}
+              maxLength={8}
             />
+
+            <Text style={styles.helperText}>
+              Use 5-8 characters with letters and numbers, like 8ABC123.
+            </Text>
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.label}>Car Bluetooth Name</Text>
+
+            <TextInput
+              style={styles.input}
+              placeholder="Toyota Camry"
+              placeholderTextColor="#888"
+              value={bluetoothDeviceName}
+              onChangeText={setBluetoothDeviceName}
+              autoCapitalize="words"
+              maxLength={60}
+            />
+
+            <Text style={styles.helperText}>
+              Optional. Enter the Bluetooth name your phone shows when connected
+              to this car to auto-switch driving to this vehicle.
+            </Text>
           </View>
 
           <View style={styles.section}>
@@ -440,29 +373,22 @@ export default function AddCarScreen({
 
             <View style={styles.colorGrid}>
               {carColors.map((colorOption) => {
-                const selected =
-                  selectedColor?.id === colorOption.id;
+                const selected = selectedColor?.id === colorOption.id;
 
                 return (
                   <TouchableOpacity
                     key={colorOption.id}
                     style={[
                       styles.colorCard,
-                      selected &&
-                        styles.colorCardSelected,
+                      selected && styles.colorCardSelected,
                     ]}
                     activeOpacity={0.85}
-                    onPress={() => {
-                      setSelectedColor(colorOption);
-                    }}
+                    onPress={() => setSelectedColor(colorOption)}
                   >
                     <View
                       style={[
                         styles.colorSwatch,
-                        {
-                          backgroundColor:
-                            colorOption.swatch,
-                        },
+                        { backgroundColor: colorOption.swatch },
                         (colorOption.id === 'white' ||
                           colorOption.id === 'silver') &&
                           styles.lightSwatch,
@@ -472,8 +398,7 @@ export default function AddCarScreen({
                     <Text
                       style={[
                         styles.colorLabel,
-                        selected &&
-                          styles.colorLabelSelected,
+                        selected && styles.colorLabelSelected,
                       ]}
                     >
                       {colorOption.label}
@@ -489,8 +414,7 @@ export default function AddCarScreen({
           <TouchableOpacity
             style={[
               styles.saveButton,
-              (!isValid || isSaving) &&
-                styles.saveButtonDisabled,
+              (!isValid || isSaving) && styles.saveButtonDisabled,
             ]}
             onPress={handleSave}
             activeOpacity={0.85}
@@ -555,7 +479,7 @@ const styles = StyleSheet.create({
   },
 
   heroCard: {
-    backgroundColor: '#f8f8f8',
+    backgroundColor: colors.surface,
     borderRadius: radius.large,
     padding: 18,
     alignItems: 'center',
@@ -622,7 +546,7 @@ const styles = StyleSheet.create({
 
   colorCard: {
     width: '48%',
-    backgroundColor: '#f8f8f8',
+    backgroundColor: colors.surface,
     borderRadius: 18,
     paddingVertical: 16,
     paddingHorizontal: 12,

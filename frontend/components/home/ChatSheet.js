@@ -7,8 +7,10 @@ import {
   TouchableOpacity,
   Animated,
   TextInput,
+  ScrollView,
 } from 'react-native';
-import { radius, shadow } from '../../styles/global';
+import { Ionicons } from '@expo/vector-icons';
+import { shadow } from '../../styles/global';
 
 export default function ChatSheet({
   composerSheetHeight,
@@ -16,9 +18,14 @@ export default function ChatSheet({
   tabBarHeight,
   message,
   setMessage,
-  onInputFocus,
-  onChatPress,
+  images = [],
+  onAddImage,
+  onRemoveImage,
+  onSend,
+  onOpenChat,
 }) {
+  const canSend = message.trim().length > 0 || images.length > 0;
+
   return (
     <Animated.View
       style={[
@@ -38,34 +45,69 @@ export default function ChatSheet({
             },
           ]}
         >
-          <TextInput
-            style={styles.chatInput}
-            placeholder="Ask anything..."
-            placeholderTextColor="#777"
-            value={message}
-            onChangeText={setMessage}
-            onFocus={onInputFocus}
-            multiline
-          />
+          {images.length > 0 ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.imagePreviewRow}
+            >
+              {images.map((image) => (
+                <View key={image.id} style={styles.imagePreviewWrap}>
+                  <Image
+                    source={{ uri: image.uri }}
+                    style={styles.imagePreview}
+                  />
+                  <TouchableOpacity
+                    style={styles.removeImageButton}
+                    onPress={() => onRemoveImage?.(image.id)}
+                    hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+                  >
+                    <Ionicons name="close" size={12} color="#fff" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </ScrollView>
+          ) : null}
+
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={() => onOpenChat?.({ focusKeyboard: true })}
+            style={styles.inputTapArea}
+          >
+            <TextInput
+              style={styles.chatInput}
+              placeholder="Ask anything..."
+              placeholderTextColor="#777"
+              value={message}
+              onChangeText={setMessage}
+              multiline
+              editable={false}
+              pointerEvents="none"
+            />
+          </TouchableOpacity>
 
           <View style={styles.inputFooterRow}>
             <TouchableOpacity
               style={styles.footerAction}
               activeOpacity={0.8}
-              onPress={onChatPress}
+              onPress={onAddImage}
             >
               <Text style={styles.footerActionText}>＋</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.footerAction}
+              style={[
+                styles.sendAction,
+                !canSend && styles.sendActionDisabled,
+              ]}
               activeOpacity={0.8}
-              onPress={onChatPress}
+              onPress={onSend}
+              disabled={!canSend}
             >
-              <Image
-                source={require('../../assets/microphone.png')}
-                style={styles.footerIcon}
-                resizeMode="contain"
+              <Ionicons
+                name="arrow-up"
+                size={18}
+                color={canSend ? '#fff' : '#999'}
               />
             </TouchableOpacity>
           </View>
@@ -104,6 +146,39 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
 
+  imagePreviewRow: {
+    gap: 8,
+    paddingBottom: 8,
+  },
+
+  imagePreviewWrap: {
+    position: 'relative',
+  },
+
+  imagePreview: {
+    width: 56,
+    height: 56,
+    borderRadius: 10,
+    backgroundColor: '#ddd',
+  },
+
+  removeImageButton: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#111',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  inputTapArea: {
+    flex: 1,
+    minHeight: 28,
+  },
+
   chatInput: {
     flex: 1,
     minHeight: 28,
@@ -138,8 +213,16 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 
-  footerIcon: {
-    width: 18,
-    height: 18,
+  sendAction: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#111',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  sendActionDisabled: {
+    backgroundColor: '#e9eaee',
   },
 });

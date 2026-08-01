@@ -1,40 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-
-const getDurationText = (parkedAt, now) => {
-  if (!parkedAt) return '';
-
-  const start = new Date(parkedAt).getTime();
-
-  if (!Number.isFinite(start)) {
-    return '';
-  }
-
-  const elapsedMilliseconds = Math.max(0, now - start);
-  const totalMinutes = Math.floor(elapsedMilliseconds / 60000);
-
-  const days = Math.floor(totalMinutes / 1440);
-  const hours = Math.floor((totalMinutes % 1440) / 60);
-  const minutes = totalMinutes % 60;
-
-  if (days > 0) {
-    return `${days}d ${hours}h`;
-  }
-
-  if (hours > 0) {
-    return `${hours}h ${minutes}m`;
-  }
-
-  if (minutes < 1) {
-    return 'less than a minute';
-  }
-
-  return `${minutes}m`;
-};
+import { getCarStatusLabel } from '../../utils/carUtils';
 
 export default function CarStatusRow({
   status = 'unknown',
   parkedAt = null,
+  speedMph = null,
+  parkedLotName = null,
 }) {
   const [now, setNow] = useState(Date.now());
 
@@ -52,20 +24,10 @@ export default function CarStatusRow({
     };
   }, [status, parkedAt]);
 
-  let label = 'Status unavailable';
-
-  if (status === 'driving') {
-    label = 'Driving';
-  }
-
-  if (status === 'parking') {
-    label = 'Parking detected';
-  }
-
-  if (status === 'parked') {
-    const duration = getDurationText(parkedAt, now);
-    label = duration ? `Parked for ${duration}` : 'Parked';
-  }
+  const label = getCarStatusLabel(
+    { status, parkedAt, lastKnownSpeedMph: speedMph, parkedLotName },
+    now
+  );
 
   return (
     <View style={styles.container}>

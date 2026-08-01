@@ -22,8 +22,18 @@ export async function sendParkingChat({
   history = [],
   userPlace = null,
   userLocation = null,
+  images = [],
 }) {
   const payload = { message, history };
+
+  if (Array.isArray(images) && images.length > 0) {
+    payload.images = images
+      .filter((image) => image?.base64)
+      .map((image) => ({
+        mime_type: image.mimeType || 'image/jpeg',
+        data: image.base64,
+      }));
+  }
 
   if (hasUserPlace(userPlace)) {
     payload.user_place = {};

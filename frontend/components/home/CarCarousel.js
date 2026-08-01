@@ -15,6 +15,7 @@ import {
   radius,
   shadow,
   globalStyles,
+  colors,
 } from '../../styles/global';
 
 import { getCarDisplayName } from '../../utils/carUtils';
@@ -164,7 +165,7 @@ export default function CarCarousel({
                     <Text
                       style={styles.currentVehicleBadgeText}
                     >
-                      Connected
+                      Driving
                     </Text>
                   </View>
                 )}
@@ -184,45 +185,17 @@ export default function CarCarousel({
                   {carName}
                 </Text>
 
-                <CarStatusRow status={car.status} />
+                <CarStatusRow
+                  status={car.status}
+                  parkedAt={car.parkedAt}
+                  speedMph={car.lastKnownSpeedMph}
+                  parkedLotName={car.parkedLotName}
+                />
               </Pressable>
             </Animated.View>
           );
         })}
       </Animated.ScrollView>
-
-      <View style={styles.currentCarNameRow}>
-        {carData.map((car, index) => {
-          const inputRange = [
-            (index - 1) * SNAP_INTERVAL,
-            index * SNAP_INTERVAL,
-            (index + 1) * SNAP_INTERVAL,
-          ];
-
-          const opacity = scrollX.interpolate({
-            inputRange,
-            outputRange: [0, 1, 0],
-            extrapolate: 'clamp',
-          });
-
-          return (
-            <Animated.Text
-              key={car.id}
-              style={[
-                styles.currentCarName,
-                {
-                  opacity,
-                },
-              ]}
-              numberOfLines={2}
-            >
-              {car.isAddCard
-                ? 'Add a new vehicle'
-                : getCarDisplayName(car)}
-            </Animated.Text>
-          );
-        })}
-      </View>
 
       {carData.length > 1 && (
         <View style={globalStyles.centeredRow}>
@@ -283,13 +256,10 @@ const styles = StyleSheet.create({
   carCard: {
     position: 'relative',
     width: CARD_WIDTH,
-
-    // Restored original card height
     minHeight: height * 0.22,
-
     borderRadius: radius.large,
     marginRight: spacing.cardGap,
-    backgroundColor: '#f8f8f8',
+    backgroundColor: colors.surface,
     ...shadow.card,
   },
 
@@ -298,15 +268,12 @@ const styles = StyleSheet.create({
     width: '100%',
     minHeight: height * 0.22,
     borderRadius: radius.large,
-
-    // Restored original spacing
     paddingTop: 22,
     paddingBottom: 16,
     paddingHorizontal: 16,
-
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#f8f8f8',
+    backgroundColor: colors.surface,
   },
 
   cardPressed: {
@@ -403,29 +370,11 @@ const styles = StyleSheet.create({
     color: '#666',
   },
 
-  currentCarNameRow: {
-    height: 28,
-    marginTop: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  currentCarName: {
-    position: 'absolute',
-    width: '100%',
-    paddingHorizontal: 24,
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: '600',
-    color: '#222',
-    textAlign: 'center',
-  },
-
   dot: {
     height: 8,
     borderRadius: 4,
     backgroundColor: '#000',
     marginHorizontal: 4,
-    marginTop: 6,
+    marginTop: 12,
   },
 });

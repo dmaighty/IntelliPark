@@ -21,14 +21,31 @@ import { getParkingLots } from '../api/parking_lots';
 import FindMap from '../components/find/FindMap';
 import FindDrawer from '../components/find/FindDrawer';
 import GarageInfoModal from '../components/find/GarageInfoModal';
+import PlaceInfoModal from '../components/find/PlaceInfoModal';
 import GarageLotLiveScreen from '../components/find/GarageLotLiveScreen';
 import {
   DEFAULT_COORDS,
   sortGaragesByDistance,
   getOffsetRegion,
   buildDirectionsUrl,
+  buildDirectionsUrlForPoint,
   mapParkingLotApiToGarage,
 } from '../utils/findUtils';
+import { hydrateCars } from '../utils/carUtils';
+import { loadSavedPlaces, getConfiguredSavedPlaces, hasConfiguredSavedPlaces } from '../utils/savedPlaces';
+import {
+  isGarageSaved,
+  loadSavedGarages,
+  toggleSavedGarage,
+} from '../utils/savedGarages';
+import {
+  addNavigationRecent,
+  loadNavigationRecents,
+} from '../utils/navigationRecents';
+import {
+  loadPlaceDetails,
+  searchPlaces,
+} from '../utils/placesSearch';
 import {
   FULL_OFFSET,
   MID_OFFSET,
@@ -37,25 +54,61 @@ import {
 
 export default function FindScreen({
   tabBarHeight = 100,
-  carLocation = null,
-  carName = 'Your Car',
+  cars = [],
+  trackedCarId = null,
+  savedPlacesRefreshTrigger = 0,
+  savedGaragesRefreshTrigger = 0,
+  onAddSavedPlaces,
 }) {
   const mapRef = useRef(null);
   const translateY = useRef(new Animated.Value(COLLAPSED_OFFSET)).current;
   const currentOffset = useRef(COLLAPSED_OFFSET);
   const searchTimeoutRef = useRef(null);
+  const hasAutoFocusedRef = useRef(false);
 
   const [query, setQuery] = useState('');
   const [userLocation, setUserLocation] = useState(null);
   const [locationGranted, setLocationGranted] = useState(false);
-  const [searchPin, setSearchPin] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
   const [garages, setGarages] = useState([]);
   const [lotsError, setLotsError] = useState('');
   const [selectedSpotId, setSelectedSpotId] = useState(null);
+  const [selectedPlace, setSelectedPlace] = useState(null);
+  const [searchResults, setSearchResults] = useState([]);
   const [infoGarage, setInfoGarage] = useState(null);
+  const [infoPlace, setInfoPlace] = useState(null);
   const [garageLotLiveVisible, setGarageLotLiveVisible] = useState(false);
   const [liveViewGarage, setLiveViewGarage] = useState(null);
+  const [mapReady, setMapReady] = useState(false);
+  const [selectedCarId, setSelectedCarId] = useState(null);
+  const [savedPlaces, setSavedPlaces] = useState([]);
+  const [hasSavedPlaces, setHasSavedPlaces] = useState(false);
+  const [savedGarages, setSavedGarages] = useState([]);
+  const [recents, setRecents] = useState([]);
+
+  const mappedCars = useMemo(() => hydrateCars(cars), [cars]);
+
+  const recentlyParkedCar = useMemo(() => {
+    const tracked = mappedCars.find(
+      (car) => String(car.id) === String(trackedCarId)
+    );
+
+    if (tracked?.status === 'parked' && tracked?.parkedLocation) {
+      return tracked;
+    }
+
+    const parkedCars = mappedCars
+      .filter(
+        (car) =>
+          car.status === 'parked' && car.parkedAt && car.parkedLocation
+      )
+      .sort(
+        (a, b) =>
+          new Date(b.parkedAt).getTime() - new Date(a.parkedAt).getTime()
+      );
+
+    return parkedCars[0] || null;
+  }, [mappedCars, trackedCarId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -65,13 +118,13 @@ export default function FindScreen({
       try {
         const rows = await getParkingLots();
         if (cancelled) return;
-        // Show every garage from the DB; mapParkingLotApiToGarage falls back
-        // to DEFAULT_COORDS for any lot missing lat/lon instead of dropping it.
-        const mapped = rows.filter((r) => r != null).map(mapParkingLotApiToGarage);
+        const mapped = rows
+          .filter((row) => row != null)
+          .map(mapParkingLotApiToGarage);
         setGarages(mapped);
-      } catch (e) {
+      } catch (error) {
         if (!cancelled) {
-          setLotsError(e.message || 'Could not load parking lots');
+          setLotsError(error.message || 'Could not load parking lots');
           setGarages([]);
         }
       }
@@ -83,79 +136,48 @@ export default function FindScreen({
     };
   }, []);
 
-  const [mapRegion, setMapRegion] = useState({
-    latitude: carLocation?.latitude || DEFAULT_COORDS.latitude,
-    longitude: carLocation?.longitude || DEFAULT_COORDS.longitude,
-    latitudeDelta: 0.015,
-    longitudeDelta: 0.015,
-  });
-
   useEffect(() => {
     let mounted = true;
 
-    const loadLocation = async () => {
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (!mounted) return;
+    const bootstrap = async () => {
+      const [places, recentItems] = await Promise.all([
+        loadSavedPlaces(),
+        loadNavigationRecents(),
+      ]);
 
-        const granted = status === 'granted';
-        setLocationGranted(granted);
-
-        if (!granted) return;
-
-        const location = await Location.getCurrentPositionAsync({});
-        if (!mounted) return;
-
-        const coords = {
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-        };
-
-        setUserLocation(coords);
-
-        const fitPoints = [];
-        if (coords) fitPoints.push(coords);
-        if (carLocation) fitPoints.push(carLocation);
-
-        if (fitPoints.length >= 2 && mapRef.current) {
-          mapRef.current.fitToCoordinates(fitPoints, {
-            edgePadding: {
-              top: 100,
-              right: 70,
-              bottom: 260,
-              left: 70,
-            },
-            animated: true,
-          });
-        }
-      } catch (error) {
-        setLocationGranted(false);
+      if (!mounted) {
+        return;
       }
+
+      setSavedPlaces(getConfiguredSavedPlaces(places));
+      setHasSavedPlaces(hasConfiguredSavedPlaces(places));
+      setRecents(recentItems);
     };
 
-    loadLocation();
+    bootstrap();
 
     return () => {
       mounted = false;
     };
-  }, [carLocation]);
-
-  const referencePoint = searchPin || userLocation || carLocation || DEFAULT_COORDS;
-
-  const sortedGarages = useMemo(() => {
-    return sortGaragesByDistance(referencePoint, garages);
-  }, [referencePoint, garages]);
-
-  const selectedGarage =
-    sortedGarages.find((spot) => spot.id === selectedSpotId) ||
-    sortedGarages[0] ||
-    null;
+  }, [savedPlacesRefreshTrigger]);
 
   useEffect(() => {
-    if (sortedGarages.length > 0 && !sortedGarages.some((g) => g.id === selectedSpotId)) {
-      setSelectedSpotId(sortedGarages[0].id);
-    }
-  }, [sortedGarages, selectedSpotId]);
+    let mounted = true;
+
+    const loadFavorites = async () => {
+      const favorites = await loadSavedGarages();
+
+      if (mounted) {
+        setSavedGarages(favorites);
+      }
+    };
+
+    loadFavorites();
+
+    return () => {
+      mounted = false;
+    };
+  }, [savedGaragesRefreshTrigger]);
 
   const animateDrawer = (toValue) => {
     currentOffset.current = toValue;
@@ -173,110 +195,240 @@ export default function FindScreen({
   const expandHalfDrawer = () => animateDrawer(MID_OFFSET);
   const collapseDrawer = () => animateDrawer(COLLAPSED_OFFSET);
 
-  const focusGarage = (garage) => {
-    setSelectedSpotId(garage.id);
-    expandDrawer();
+  const resolveUserLocation = useCallback(async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
 
-    const nextRegion = getOffsetRegion(garage, 0.008, 0.008);
-    setMapRegion(nextRegion);
+      if (status !== 'granted') {
+        setLocationGranted(false);
+        return userLocation;
+      }
+
+      setLocationGranted(true);
+
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
+
+      const coords = {
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      };
+
+      setUserLocation(coords);
+      return coords;
+    } catch {
+      return userLocation;
+    }
+  }, [userLocation]);
+
+  const focusOnUserLocation = useCallback(async () => {
+    const coords = await resolveUserLocation();
+
+    if (!coords) {
+      Alert.alert(
+        'Location unavailable',
+        'Allow location access so IntelliPark can center the map on you.'
+      );
+      return null;
+    }
+
+    const nextRegion = {
+      latitude: coords.latitude,
+      longitude: coords.longitude,
+      latitudeDelta: 0.012,
+      longitudeDelta: 0.012,
+    };
 
     if (mapRef.current) {
-      mapRef.current.animateToRegion(nextRegion, 280);
+      mapRef.current.animateToRegion(nextRegion, 350);
     }
-  };
 
-  const handleNearMe = () => {
-    if (!mapRef.current) return;
+    return coords;
+  }, [resolveUserLocation]);
 
-    const fitPoints = [];
-    if (userLocation) fitPoints.push(userLocation);
-    if (carLocation) fitPoints.push(carLocation);
+  useEffect(() => {
+    let mounted = true;
 
-    if (fitPoints.length >= 2) {
-      mapRef.current.fitToCoordinates(fitPoints, {
-        edgePadding: {
-          top: 100,
-          right: 70,
-          bottom: 260,
-          left: 70,
-        },
-        animated: true,
-      });
+    const loadLocation = async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (!mounted) return;
+
+        const granted = status === 'granted';
+        setLocationGranted(granted);
+        if (!granted) return;
+
+        const location = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        if (!mounted) return;
+
+        setUserLocation({
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+        });
+      } catch {
+        if (mounted) {
+          setLocationGranted(false);
+        }
+      }
+    };
+
+    loadLocation();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const referencePoint = selectedPlace || userLocation || DEFAULT_COORDS;
+
+  const sortedGarages = useMemo(() => {
+    return sortGaragesByDistance(referencePoint, garages);
+  }, [referencePoint, garages]);
+
+  const nearbyGarages = useMemo(() => {
+    return sortedGarages.slice(0, 5);
+  }, [sortedGarages]);
+
+  useEffect(() => {
+    if (hasAutoFocusedRef.current || !mapReady || !userLocation) {
       return;
     }
 
-    const target = userLocation || carLocation;
-    if (!target) return;
+    hasAutoFocusedRef.current = true;
 
-    const nextRegion = getOffsetRegion(target, 0.012, 0.012);
-    setMapRegion(nextRegion);
+    focusOnUserLocation();
+
+    const nearestToUser = sortGaragesByDistance(userLocation, garages).slice(
+      0,
+      5
+    );
+
+    if (nearestToUser.length > 0) {
+      setSelectedSpotId(nearestToUser[0].id);
+    }
+
+    expandHalfDrawer();
+  }, [focusOnUserLocation, garages, mapReady, userLocation]);
+
+  const selectedGarage =
+    nearbyGarages.find((spot) => spot.id === selectedSpotId) ||
+    nearbyGarages[0] ||
+    null;
+
+  useEffect(() => {
+    if (
+      nearbyGarages.length > 0 &&
+      !nearbyGarages.some((garage) => garage.id === selectedSpotId)
+    ) {
+      setSelectedSpotId(nearbyGarages[0].id);
+    }
+  }, [nearbyGarages, selectedSpotId]);
+
+  const focusMapOnCoordinate = useCallback((coordinate) => {
+    if (!coordinate || !mapRef.current) {
+      return;
+    }
+
+    const nextRegion = getOffsetRegion(coordinate, 0.01, 0.01);
     mapRef.current.animateToRegion(nextRegion, 280);
+  }, []);
+
+  const focusGarage = (garage) => {
+    setSelectedSpotId(garage.id);
+    setSelectedCarId(null);
+    setSelectedPlace(null);
+    expandDrawer();
+    focusMapOnCoordinate(garage);
   };
 
-  const handleSearchAddress = async (text) => {
-    const trimmed = text.trim();
-
-    if (trimmed.length < 3) {
-      setSearchPin(null);
-      return;
-    }
-
-    try {
-      setIsSearching(true);
-      const results = await Location.geocodeAsync(trimmed);
-
-      if (!results.length) {
-        setSearchPin(null);
+  const focusCar = useCallback(
+    (car) => {
+      if (!car?.parkedLocation) {
         return;
       }
 
-      const first = results[0];
-      const coords = {
-        latitude: first.latitude,
-        longitude: first.longitude,
-      };
+      setSelectedCarId(car.id);
+      setSelectedSpotId(null);
+      setSelectedPlace(null);
+      collapseDrawer();
+      focusMapOnCoordinate(car.parkedLocation);
+    },
+    [focusMapOnCoordinate]
+  );
 
-      setSearchPin(coords);
-
-      const nearestSorted = sortGaragesByDistance(coords, garages).slice(0, 5);
-
-      if (nearestSorted.length > 0) {
-        setSelectedSpotId(nearestSorted[0].id);
+  const focusPlace = useCallback(
+    async (place) => {
+      if (!place?.latitude || !place?.longitude) {
+        return;
       }
 
+      const detailed = await loadPlaceDetails(place);
+      setSelectedPlace(detailed);
+      setSelectedSpotId(null);
+      setSelectedCarId(null);
+      setInfoGarage(null);
       expandHalfDrawer();
+      focusMapOnCoordinate(detailed);
+    },
+    [focusMapOnCoordinate]
+  );
 
-      if (mapRef.current && nearestSorted.length > 0) {
-        mapRef.current.fitToCoordinates(
-          [
-            coords,
-            ...nearestSorted.map((garage) => ({
-              latitude: garage.latitude,
-              longitude: garage.longitude,
-            })),
-          ],
-          {
-            edgePadding: {
-              top: 120,
-              right: 70,
-              bottom: 260,
-              left: 70,
-            },
-            animated: true,
-          }
-        );
-      } else if (mapRef.current) {
-        const nextRegion = getOffsetRegion(coords, 0.01, 0.01);
-        setMapRegion(nextRegion);
-        mapRef.current.animateToRegion(nextRegion, 300);
-      }
-    } catch (error) {
-      setSearchPin(null);
-      Alert.alert('Search error', 'Could not find that address.');
-    } finally {
-      setIsSearching(false);
+  const handleNearMe = async () => {
+    setQuery('');
+    setSearchResults([]);
+    setSelectedPlace(null);
+    setSelectedCarId(null);
+
+    const coords = await focusOnUserLocation();
+
+    if (!coords) {
+      return;
     }
+
+    const nearestToUser = sortGaragesByDistance(coords, garages).slice(0, 5);
+
+    if (nearestToUser.length > 0) {
+      setSelectedSpotId(nearestToUser[0].id);
+    }
+
+    expandHalfDrawer();
   };
+
+  const handleSearch = useCallback(
+    async (text) => {
+      const trimmed = text.trim();
+
+      if (trimmed.length < 3) {
+        setSearchResults([]);
+        setSelectedPlace(null);
+        return;
+      }
+
+      try {
+        setIsSearching(true);
+        const results = await searchPlaces(
+          trimmed,
+          userLocation || DEFAULT_COORDS
+        );
+        setSearchResults(results);
+
+        if (results.length > 0) {
+          await focusPlace(results[0]);
+        } else {
+          setSelectedPlace(null);
+        }
+      } catch {
+        setSearchResults([]);
+        Alert.alert('Search error', 'Could not search for that place.');
+      } finally {
+        setIsSearching(false);
+      }
+    },
+    [focusPlace, userLocation]
+  );
 
   useEffect(() => {
     if (searchTimeoutRef.current) {
@@ -284,12 +436,12 @@ export default function FindScreen({
     }
 
     if (query.trim().length < 3) {
-      setSearchPin(null);
+      setSearchResults([]);
       return undefined;
     }
 
     searchTimeoutRef.current = setTimeout(() => {
-      handleSearchAddress(query);
+      handleSearch(query);
     }, 450);
 
     return () => {
@@ -297,15 +449,60 @@ export default function FindScreen({
         clearTimeout(searchTimeoutRef.current);
       }
     };
-  }, [query, garages]);
+  }, [query, handleSearch]);
 
-  const handleGo = async (garage) => {
+  const recordRecent = useCallback(async (target) => {
+    const next = await addNavigationRecent({
+      id: target.id,
+      name: target.name || target.title,
+      address: target.address,
+      category: target.category,
+      latitude: target.latitude,
+      longitude: target.longitude,
+    });
+
+    if (next) {
+      setRecents(next);
+    }
+  }, []);
+
+  const handleGoToTarget = async (target) => {
+    if (!target?.latitude || !target?.longitude) {
+      return;
+    }
+
+    await recordRecent(target);
+
     try {
-      await Linking.openURL(buildDirectionsUrl(garage));
-    } catch (error) {
+      await Linking.openURL(
+        buildDirectionsUrlForPoint(target.latitude, target.longitude)
+      );
+    } catch {
       Alert.alert('Unable to open maps', 'Please try again.');
     }
   };
+
+  const handleGoGarage = async (garage) => {
+    await recordRecent({
+      id: garage.id,
+      name: garage.name,
+      address: garage.address,
+      category: 'Parking',
+      latitude: garage.latitude,
+      longitude: garage.longitude,
+    });
+
+    try {
+      await Linking.openURL(buildDirectionsUrl(garage));
+    } catch {
+      Alert.alert('Unable to open maps', 'Please try again.');
+    }
+  };
+
+  const handleToggleFavorite = useCallback(async (garage) => {
+    const updated = await toggleSavedGarage(garage);
+    setSavedGarages(updated);
+  }, []);
 
   const handleAvailabilityChange = useCallback((lotId, spotsOpen) => {
     const update = (garage) =>
@@ -379,6 +576,10 @@ export default function FindScreen({
     })
   ).current;
 
+  const mapSearchPlaces = selectedPlace
+    ? [selectedPlace, ...searchResults.filter((place) => place.id !== selectedPlace.id)]
+    : searchResults;
+
   return (
     <SafeAreaView style={globalStyles.screen}>
       <View style={styles.screenContent}>
@@ -389,22 +590,24 @@ export default function FindScreen({
         )}
         <FindMap
           mapRef={mapRef}
-          mapRegion={mapRegion}
-          onRegionChangeComplete={setMapRegion}
+          onRegionChangeComplete={() => {}}
+          onMapReady={() => setMapReady(true)}
           initialRegion={{
-            latitude: carLocation?.latitude || DEFAULT_COORDS.latitude,
-            longitude: carLocation?.longitude || DEFAULT_COORDS.longitude,
+            latitude: DEFAULT_COORDS.latitude,
+            longitude: DEFAULT_COORDS.longitude,
             latitudeDelta: 0.015,
             longitudeDelta: 0.015,
           }}
           locationGranted={locationGranted}
-          carLocation={carLocation}
-          carName={carName}
-          searchPin={searchPin}
-          query={query}
-          garages={sortedGarages}
+          recentlyParkedCar={recentlyParkedCar}
+          selectedCarId={selectedCarId}
+          searchPlaces={mapSearchPlaces}
+          selectedPlaceId={selectedPlace?.id}
+          garages={nearbyGarages}
           selectedSpotId={selectedSpotId}
           onSelectGarage={focusGarage}
+          onSelectCar={focusCar}
+          onSelectSearchPlace={focusPlace}
           onNearMe={handleNearMe}
         />
 
@@ -414,16 +617,32 @@ export default function FindScreen({
           panHandlers={panResponder.panHandlers}
           query={query}
           onChangeQuery={setQuery}
-          onSubmitSearch={() => handleSearchAddress(query)}
+          onSubmitSearch={() => handleSearch(query)}
           isSearching={isSearching}
           onFocusSearch={expandHalfDrawer}
           selectedGarage={selectedGarage}
+          selectedPlace={selectedPlace}
           referencePoint={referencePoint}
-          onGo={handleGo}
+          onGo={(target) =>
+            target?.ratePerHour != null || target?.spotsOpen != null
+              ? handleGoGarage(target)
+              : handleGoToTarget(target)
+          }
           onMoreInfo={setInfoGarage}
-          garages={sortedGarages}
+          onMorePlaceInfo={setInfoPlace}
+          garages={nearbyGarages}
           selectedSpotId={selectedSpotId}
           onSelectGarage={focusGarage}
+          recentlyParkedCar={recentlyParkedCar}
+          onSelectCar={focusCar}
+          savedPlaces={savedPlaces}
+          hasSavedPlaces={hasSavedPlaces}
+          onAddSavedPlaces={onAddSavedPlaces}
+          onSelectSavedPlace={focusPlace}
+          searchResults={searchResults}
+          onSelectSearchResult={focusPlace}
+          recents={recents}
+          onSelectRecent={focusPlace}
         />
       </View>
 
@@ -431,15 +650,26 @@ export default function FindScreen({
         visible={!!infoGarage}
         garage={infoGarage}
         userLocation={userLocation}
+        isSaved={isGarageSaved(infoGarage?.id, savedGarages)}
         onClose={() => setInfoGarage(null)}
-        onDirections={handleGo}
+        onDirections={handleGoGarage}
+        onToggleFavorite={handleToggleFavorite}
+        onAvailabilityChange={handleAvailabilityChange}
         onGarageLotPage={() => {
           setLiveViewGarage(infoGarage);
           setInfoGarage(null);
           setGarageLotLiveVisible(true);
         }}
       />
-      
+
+      <PlaceInfoModal
+        visible={!!infoPlace}
+        place={infoPlace}
+        userLocation={userLocation}
+        onClose={() => setInfoPlace(null)}
+        onDirections={handleGoToTarget}
+      />
+
       <GarageLotLiveScreen
         visible={garageLotLiveVisible}
         garage={liveViewGarage}

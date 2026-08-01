@@ -4,8 +4,9 @@ from sqlalchemy.orm import Session
 
 from app.database.connection import get_db
 from app.db.models.user import Driver, User
-from app.schemas.user import LoginIn, TokenOut, UserOut, UserRegisterIn
-from app.security import create_access_token, hash_password, verify_password
+from app.schemas.user import LoginIn, PasswordResetConfirmResponse, PasswordResetTokenConfirmIn, TokenOut, UserOut, UserRegisterIn
+from app.security import create_access_token, hash_password, validate_password_strength, verify_password
+from app.services.password_reset import consume_email_reset_token
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -78,3 +79,25 @@ def login(body: LoginIn, db: Session = Depends(get_db)):
         access_token=token,
         user=UserOut.model_validate(user),
     )
+
+
+@router.post("/password-reset/confirm", response_model=PasswordResetConfirmResponse)
+def confirm_password_reset_token(
+    body: PasswordResetTokenConfirmIn,
+    db: Session = Depends(get_db),
+):
+    validate_password_strength(body.new_password)
+    user_id = consume_email_reset_token(body.token)
+
+    if not user_id:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset link")
+
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user.password_hash = hash_password(body.new_password)
+    db.add(user)
+    db.commit()
+
+    return PasswordResetConfirmResponse(message="Password updated successfully.")

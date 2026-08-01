@@ -12,7 +12,8 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { spacing, radius, shadow } from '../../styles/global';
 import { buildRegion } from '../../utils/mapUtils';
-import { getCarDisplayName } from '../../utils/carUtils';
+import { getCarDisplayName, getCarStatusLabel } from '../../utils/carUtils';
+import useStatusRefreshTick from '../../hooks/useStatusRefreshTick';
 
 export default function MapSection({
   mapRef,
@@ -29,6 +30,10 @@ export default function MapSection({
 }) {
   const markerImage =
     selectedCar?.parkedImage || selectedCar?.image || null;
+
+  useStatusRefreshTick(
+    selectedCar?.status === 'parked' && Boolean(selectedCar?.parkedAt)
+  );
 
   return (
     <View style={styles.mapSection}>
@@ -47,9 +52,7 @@ export default function MapSection({
               key={selectedCar.id}
               coordinate={selectedCar.parkedLocation}
               title={getCarDisplayName(selectedCar)}
-              description={
-                selectedCar.licensePlate || 'Saved car location'
-              }
+              description={getCarStatusLabel(selectedCar)}
               anchor={{ x: 0.5, y: 0.5 }}
               tracksViewChanges={false}
             >

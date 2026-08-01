@@ -6,11 +6,12 @@ import {
   TouchableOpacity,
   Modal,
   ScrollView,
-  Alert,
   Dimensions,
 } from 'react-native';
-import { radius, shadow } from '../../styles/global';
-import { getDistanceMiles } from '../../utils/findUtils';
+import { Ionicons } from '@expo/vector-icons';
+import { radius, shadow, colors } from '../../styles/global';
+import { getDistanceMiles, enrichGarageWithDefaults } from '../../utils/findUtils';
+import GarageSpotPickerModal from './GarageSpotPickerModal';
 
 const { height } = Dimensions.get('window');
 
@@ -18,45 +19,40 @@ export default function GarageInfoModal({
   visible,
   garage,
   userLocation,
+  isSaved = false,
   onClose,
   onDirections,
   onGarageLotPage,
+  onAvailabilityChange,
+  onToggleFavorite,
 }) {
   const [selectedLevelId, setSelectedLevelId] = useState(null);
+  const [spotPickerVisible, setSpotPickerVisible] = useState(false);
+
+  const garageDetails = useMemo(
+    () => enrichGarageWithDefaults(garage),
+    [garage]
+  );
 
   useEffect(() => {
-    setSelectedLevelId(garage?.levels?.[0]?.id || null);
-  }, [garage]);
+    setSelectedLevelId(garageDetails?.levels?.[0]?.id || null);
+  }, [garageDetails]);
 
   const selectedLevel = useMemo(() => {
-    if (!garage?.levels?.length) return null;
+    if (!garageDetails?.levels?.length) return null;
     return (
-      garage.levels.find((level) => level.id === selectedLevelId) ||
-      garage.levels[0]
+      garageDetails.levels.find((level) => level.id === selectedLevelId) ||
+      garageDetails.levels[0]
     );
-  }, [garage, selectedLevelId]);
+  }, [garageDetails, selectedLevelId]);
 
   const distanceFromPhone =
-    garage && userLocation
-      ? `${getDistanceMiles(userLocation, garage).toFixed(1)} mi`
+    garageDetails && userLocation
+      ? `${getDistanceMiles(userLocation, garageDetails).toFixed(1)} mi`
       : 'Unavailable';
 
   const handleCheckSpots = () => {
-    Alert.alert(
-      'Check spots',
-      selectedLevel
-        ? `${selectedLevel.openSpots} spots open on ${selectedLevel.name}.`
-        : garage?.spotsOpen == null
-          ? 'Live availability is unavailable.'
-          : `${garage.spotsOpen} total spots open.`
-    );
-  };
-
-  const handleGarageLotPage = () => {
-    Alert.alert(
-      'Garage lot page',
-      'Connect this button to your real garage details page or API later.'
-    );
+    setSpotPickerVisible(true);
   };
 
   return (
@@ -72,32 +68,48 @@ export default function GarageInfoModal({
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.modalContent}
           >
-            <Text style={styles.modalTitle}>More info</Text>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>More info</Text>
+              <TouchableOpacity
+                style={styles.favoriteButton}
+                activeOpacity={0.85}
+                onPress={() => garageDetails && onToggleFavorite?.(garageDetails)}
+              >
+                <Ionicons
+                  name={isSaved ? 'heart' : 'heart-outline'}
+                  size={22}
+                  color={isSaved ? '#ef4444' : '#111'}
+                />
+              </TouchableOpacity>
+            </View>
 
             <View style={styles.infoCard}>
-              <InfoRow label="Name" value={garage?.name} />
-              <InfoRow label="Location" value={garage?.address} />
+              <InfoRow label="Name" value={garageDetails?.name} />
+              <InfoRow label="Location" value={garageDetails?.address} />
               <InfoRow
                 label="Review Rating"
-                value={garage ? `${garage.rating}` : '-'}
+                value={garageDetails ? `${garageDetails.rating}` : '-'}
               />
               <InfoRow label="Distance from phone" value={distanceFromPhone} />
-              <InfoRow label="Rate/hr" value={garage?.ratePerHour} />
+              <InfoRow label="Rate/hr" value={garageDetails?.ratePerHour} />
               <InfoRow
                 label="Spots open"
                 value={
-                  garage?.spotsOpen == null
+                  garageDetails?.spotsOpen == null
                     ? 'Unavailable'
-                    : `${garage.spotsOpen}`
+                    : `${garageDetails.spotsOpen}`
                 }
               />
-              <InfoRow label="Schedule" value={garage?.schedule || 'Unavailable'} />
+              <InfoRow
+                label="Schedule"
+                value={garageDetails?.schedule || 'Unavailable'}
+              />
             </View>
 
-            {!!garage?.details && (
+            {!!garageDetails?.details && (
               <View style={styles.sectionCard}>
-                <Text style={styles.sectionTitle}>Garage lot page</Text>
-                <Text style={styles.sectionBody}>{garage.details}</Text>
+                <Text style={styles.sectionTitle}>About this garage</Text>
+                <Text style={styles.sectionBody}>{garageDetails.details}</Text>
               </View>
             )}
 
@@ -105,7 +117,7 @@ export default function GarageInfoModal({
               <TouchableOpacity
                 style={styles.primaryButton}
                 activeOpacity={0.85}
-                onPress={() => garage && onDirections(garage)}
+                onPress={() => garageDetails && onDirections(garageDetails)}
               >
                 <Text style={styles.primaryButtonText}>Directions</Text>
               </TouchableOpacity>
@@ -115,7 +127,7 @@ export default function GarageInfoModal({
                 activeOpacity={0.85}
                 onPress={handleCheckSpots}
               >
-                <Text style={styles.secondaryButtonText}>Check spots</Text>
+                <Text style={styles.secondaryButtonText}>View spot map</Text>
               </TouchableOpacity>
             </View>
 
@@ -127,12 +139,12 @@ export default function GarageInfoModal({
               <Text style={styles.secondaryButtonText}>Garage lot page</Text>
             </TouchableOpacity>
 
-            {!!garage?.levels?.length && (
+            {!!garageDetails?.levels?.length && (
               <View style={styles.sectionCard}>
-                <Text style={styles.sectionTitle}>Change level</Text>
+                <Text style={styles.sectionTitle}>Garage levels</Text>
 
                 <View style={styles.levelTabs}>
-                  {garage.levels.map((level) => {
+                  {garageDetails.levels.map((level) => {
                     const isSelected = level.id === selectedLevel?.id;
 
                     return (
@@ -159,53 +171,9 @@ export default function GarageInfoModal({
                 </View>
 
                 <Text style={styles.levelOpenText}>
-                  {selectedLevel?.openSpots ?? 0} open spots
+                  {selectedLevel?.openSpots ?? garageDetails?.spotsOpen ?? 0}{' '}
+                  open spots on {selectedLevel?.name || 'this level'}
                 </Text>
-              </View>
-            )}
-
-            {!!selectedLevel?.layout?.length && (
-              <View style={styles.sectionCard}>
-                <Text style={styles.sectionTitle}>
-                  Top view map layout w live occupied/open spots
-                </Text>
-
-                <View style={styles.layoutGrid}>
-                  {selectedLevel.layout.map((spot, index) => {
-                    const isOpen = spot === 'open';
-
-                    return (
-                      <View
-                        key={`${selectedLevel.id}-${index}`}
-                        style={[
-                          styles.layoutSpot,
-                          isOpen ? styles.layoutSpotOpen : styles.layoutSpotOccupied,
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.layoutSpotText,
-                            !isOpen && styles.layoutSpotTextLight,
-                          ]}
-                        >
-                          {isOpen ? 'Open' : 'Full'}
-                        </Text>
-                      </View>
-                    );
-                  })}
-                </View>
-
-                <View style={styles.legendRow}>
-                  <View style={styles.legendItem}>
-                    <View style={[styles.legendDot, styles.layoutSpotOpen]} />
-                    <Text style={styles.legendText}>Open</Text>
-                  </View>
-
-                  <View style={styles.legendItem}>
-                    <View style={[styles.legendDot, styles.layoutSpotOccupied]} />
-                    <Text style={styles.legendText}>Occupied</Text>
-                  </View>
-                </View>
               </View>
             )}
 
@@ -214,7 +182,7 @@ export default function GarageInfoModal({
                 <Text style={styles.sectionTitle}>Peak time graph</Text>
 
                 <View style={styles.chartRow}>
-                  {garage.peakTimes.map((item) => (
+                  {garageDetails.peakTimes.map((item) => (
                     <View key={item.label} style={styles.chartItem}>
                       <View style={styles.chartTrack}>
                         <View
@@ -244,6 +212,13 @@ export default function GarageInfoModal({
           </ScrollView>
         </View>
       </View>
+
+      <GarageSpotPickerModal
+        visible={spotPickerVisible}
+        garage={garageDetails}
+        onClose={() => setSpotPickerVisible(false)}
+        onAvailabilityChange={onAvailabilityChange}
+      />
     </Modal>
   );
 }
@@ -277,15 +252,31 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
   },
 
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+
   modalTitle: {
     fontSize: 24,
     fontWeight: '700',
     color: '#000',
-    marginBottom: 16,
+    flex: 1,
+  },
+
+  favoriteButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#f3f4f6',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   infoCard: {
-    backgroundColor: '#f8f8f8',
+    backgroundColor: colors.surface,
     borderRadius: 18,
     padding: 14,
     marginBottom: 14,
@@ -311,7 +302,7 @@ const styles = StyleSheet.create({
   },
 
   sectionCard: {
-    backgroundColor: '#f8f8f8',
+    backgroundColor: colors.surface,
     borderRadius: 18,
     padding: 14,
     marginBottom: 14,

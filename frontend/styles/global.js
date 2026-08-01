@@ -1,6 +1,8 @@
 import { StyleSheet } from 'react-native';
 import colors from './colors';
 
+export { colors };
+
 /* ---------- SPACING SYSTEM ---------- */
 export const spacing = {
   screen: 24,
@@ -173,14 +175,14 @@ export const globalStyles = StyleSheet.create({
   },
 
   roundedCard: {
-    backgroundColor: '#f8f8f8',
+    backgroundColor: colors.surface,
     borderRadius: radius.large,
     padding: spacing.large,
     ...shadow.card,
   },
 
   softCard: {
-    backgroundColor: '#f8f8f8',
+    backgroundColor: colors.surface,
     borderRadius: radius.medium,
     padding: spacing.large,
     ...shadow.soft,
