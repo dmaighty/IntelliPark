@@ -1,0 +1,30 @@
+Meeting Type: Team-Only
+Date: 2026-07-26
+Start–End Time: 9:00pm 9:45pm
+Location/Mode: Discord
+Attendees:
+- Reza Aghayari
+- Sarah Liang 
+- Ripandeep Singh
+- Quan David Mai
+
+1) Accomplished Since Last Meeting
+- Completed documentation of testing procedures, validation process, and project implementation for the final report
+- Worked on updating the Find Garage page for improved usability and navigation
+- Created and finalized the admin dashboard for monitoring parking data and system activity
+- Validated dashboard data collection and finalized performance evaluation using live camera results
+
+2) Accomplished During This Meeting
+- Reviewed final project status, confirmed completed features, and discussed preparation steps for the project expo
+
+3) Issues / Blockers
+- Minor presentation preparation and final project refinements remained before the expo
+
+4) Action Items
+- Action: Prepare for project expo | Owner: Reza Aghayari | Due: Aug 07
+- Action: Prepare for project expo | Owner: Sarah Liang | Due: Aug 07
+- Action: Prepare for project expo | Owner: Ripandeep Singh | Due: Aug 07
+- Action: Prepare for project expo | Owner: Quan David Mai | Due: Aug 07
+
+5) Plans / Goals for Next Meeting
+- Finalize expo materials, practice the demonstration, and ensure the project is ready for presentation

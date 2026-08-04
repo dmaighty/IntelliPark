@@ -1,0 +1,30 @@
+Meeting Type: Team-Only
+Date: 2026-07-19
+Start–End Time: 9:00pm 9:45pm
+Location/Mode: Discord
+Attendees:
+- Reza Aghayari
+- Sarah Liang 
+- Ripandeep Singh
+- Quan David Mai
+
+1) Accomplished Since Last Meeting
+- Performed additional system validation and regression testing after integration updates
+- Added contact tabs and updated the history page information layout
+- Expanded the application by adding support for three different live camera streams
+- Compared model predictions against actual parking availability to evaluate performance
+
+2) Accomplished During This Meeting
+- Reviewed system testing results, discussed UI progress, and planned the remaining implementation tasks
+
+3) Issues / Blockers
+- Some UI features still required integration, and dashboard data collection was still in progress
+
+4) Action Items
+- Action: Documented database design and implementation details for the final report | Owner: Reza Aghayari | Due: Jul 26
+- Action: Began redesigning and improving the chat page interface | Owner: Sarah Liang | Due: Jul 26
+- Action: Implemented the in-app chat feature for user communication | Owner: Ripandeep Singh | Due: Jul 26
+- Action: Stored parking occupancy data in the database for dashboard visualization | Owner: Quan David Mai | Due: Jul 26
+
+5) Plans / Goals for Next Meeting
+- Complete the assigned features, continue system integration, and prepare project documentation

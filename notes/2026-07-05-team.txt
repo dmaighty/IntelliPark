@@ -1,0 +1,30 @@
+Meeting Type: Team-Only
+Date: 2026-07-05
+Start–End Time: 9:00pm 9:45pm
+Location/Mode: Discord
+Attendees:
+- Reza Aghayari
+- Sarah Liang 
+- Ripandeep Singh
+- Quan David Mai
+
+1) Accomplished Since Last Meeting
+- Tested frontend, backend, and database integration for reliable end-to-end communication
+- Improved the parking status tracker by monitoring time spent parked
+- Tested and refined the hybrid detection model to improve reliability
+- Improved model performance across different camera angles and environments
+
+2) Accomplished During This Meeting
+- Reviewed progress on backend integration, UI updates, model improvements, and live camera testing, and confirmed action items for the next sprint
+
+3) Issues / Blockers
+- Detection accuracy remained inconsistent across some camera angles, and backend-to-frontend integration still required additional validation
+
+4) Action Items
+- Action: Verified database operations and validated data consistency through testing | Owner: Reza Aghayari | Due: Jul 12
+- Action: Added the profile section with profile photo saving functionality | Owner: Sarah Liang | Due: Jul 12
+- Action: Connected the backend detection service with the UI to display live prediction results | Owner: Ripandeep Singh | Due: Jul 12
+- Action: Measured detection accuracy using multiple live camera perspectives. | Owner: Quan David Mai | Due: Jul 12
+
+5) Plans / Goals for Next Meeting
+- Complete assigned tasks, finish UI integration with live predictions, validate database operations, and improve model accuracy using additional testing

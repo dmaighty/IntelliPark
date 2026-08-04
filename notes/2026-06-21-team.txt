@@ -1,0 +1,30 @@
+Meeting Type: Team-Only
+Date: 2026-06-21
+Start–End Time: 9:00pm 9:45pm
+Location/Mode: Discord
+Attendees:
+- Reza Aghayari
+- Sarah Liang 
+- Ripandeep Singh
+- Quan David Mai
+
+1) Accomplished Since Last Meeting
+- Performed REST API testing to verify correct request handling and response generation
+- Modified the car edit pages and refined the vehicle management interface
+- Continued model fine-tuning and evaluated different approaches for improving detection performance
+- Set up live camera feeds for model training and testing
+
+2) Accomplished During This Meeting
+- Reviewed implementation progress, discussed testing results, and assigned the next round of development tasks
+
+3) Issues / Blockers
+- Backend testing identified minor issues, and the detection model required additional tuning
+
+4) Action Items
+- Action: Continued backend API validation and resolved issues identified during testing | Owner: Reza Aghayari | Due: Jun 28
+- Action: Added parked/driving status tracking using a Bluetooth connection | Owner: Sarah Liang | Due: Jun 28
+- Action: Developed a hybrid detection approach combining multiple detection methods | Owner: Ripandeep Singh | Due: Jun 28
+- Action: Improved detection model using live parking garage camera streams | Owner: Quan David Mai | Due: Jun 28
+
+5) Plans / Goals for Next Meeting
+- Continue API validation, improve model performance, and implement the next UI and detection features

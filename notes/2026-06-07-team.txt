@@ -1,0 +1,30 @@
+Meeting Type: Team-Only
+Date: 2026-06-07
+Start–End Time: 9:00pm 9:45pm
+Location/Mode: Discord
+Attendees:
+- Reza Aghayari
+- Sarah Liang 
+- Ripandeep Singh
+- Quan David Mai
+
+1) Accomplished Since Last Meeting
+- create data for prediction model
+- frontend: start web pages for admin access
+- integrate prediction model and historic data with backend
+- improve parking detection ai by further training and tuning
+
+2) Accomplished During This Meeting
+- Reviewed project goals, discussed development progress, and assigned tasks for each team member
+
+3) Issues / Blockers
+- Additional training data was still being collected.
+
+4) Action Items
+- Action: Set up backend testing plan and began sample REST API testing. | Owner: Reza Aghayari | Due: Jun 14
+- Action: Updated the homepage layout, including improvements to the car carousel information display | Owner: Sarah Liang | Due: Jun 14
+- Action: Start the fine-tuning the parking detection model to improve prediction accuracy. | Owner: Ripandeep Singh | Due: Jun 14
+- Action: Collected publicly available live parking garage camera feeds for demonstrations. | Owner: Quan David Mai | Due: Jun 14
+
+5) Plans / Goals for Next Meeting
+- Begin individual development tasks, continue model training, and start backend and UI implementation.
