@@ -92,7 +92,7 @@ export default function App() {
 
   const isSignedInArea = signedInScreens.includes(screen);
 
-  const { trackedCarId, trackCar } = useVehicleTracking({
+  const { trackedCarId, trackCar, trackingAlert, pendingParkPhotoCarId, markParkedManually, saveParkedSpotPhoto, dismissParkPhotoPrompt } = useVehicleTracking({
     cars,
     setCars,
     setHistory,
@@ -321,6 +321,11 @@ export default function App() {
                   cars={displayCars}
                   trackedCarId={trackedCarId}
                   onTrackCar={trackCar}
+                  trackingAlert={trackingAlert}
+                  pendingParkPhotoCarId={pendingParkPhotoCarId}
+                  onSaveParkedSpotPhoto={saveParkedSpotPhoto}
+                  onDismissParkPhotoPrompt={dismissParkPhotoPrompt}
+                  onMarkParkedManually={markParkedManually}
                   profileImageUrl={profileImageUrl}
                   onProfilePress={() => setScreen('profile')}
                   onFindPress={() => setScreen('find')}

@@ -82,6 +82,7 @@ export function extractTrackingFields(car) {
     bluetoothDeviceId: car.bluetoothDeviceId || null,
     bluetoothDeviceName: car.bluetoothDeviceName || null,
     lastKnownSpeedMph: car.lastKnownSpeedMph ?? null,
+    parkedSpotPhotoUri: car.parkedSpotPhotoUri || null,
   };
 }
 

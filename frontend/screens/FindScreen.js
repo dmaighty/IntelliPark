@@ -31,6 +31,8 @@ import {
   buildDirectionsUrlForPoint,
   mapParkingLotApiToGarage,
 } from '../utils/findUtils';
+import { openWalkingDirections } from '../utils/navigationUtils';
+import { rankGaragesForUser } from '../utils/garagePredictionUtils';
 import { hydrateCars } from '../utils/carUtils';
 import { loadSavedPlaces, getConfiguredSavedPlaces, hasConfiguredSavedPlaces } from '../utils/savedPlaces';
 import {
@@ -284,8 +286,8 @@ export default function FindScreen({
 
   const referencePoint = selectedPlace || userLocation || DEFAULT_COORDS;
 
-  const sortedGarages = useMemo(() => {
-    return sortGaragesByDistance(referencePoint, garages);
+  const rankedGarages = useMemo(() => {
+    return rankGaragesForUser(referencePoint, garages);
   }, [referencePoint, garages]);
 
   useEffect(() => {
@@ -631,6 +633,7 @@ export default function FindScreen({
           onSelectGarage={focusGarage}
           recentlyParkedCar={recentlyParkedCar}
           onSelectCar={focusCar}
+          onNavigateToParkedCar={openWalkingDirections}
           savedPlaces={savedPlaces}
           hasSavedPlaces={hasSavedPlaces}
           onAddSavedPlaces={onAddSavedPlaces}

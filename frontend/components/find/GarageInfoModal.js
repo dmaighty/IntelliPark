@@ -11,6 +11,11 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { radius, shadow, colors } from '../../styles/global';
 import { getDistanceMiles, enrichGarageWithDefaults } from '../../utils/findUtils';
+import {
+  formatDriveEta,
+  formatUpdatedAgo,
+} from '../../utils/garagePredictionUtils';
+import { getLiveFramePredictions } from '../../api/prediction';
 import GarageSpotPickerModal from './GarageSpotPickerModal';
 
 const { height } = Dimensions.get('window');
@@ -28,6 +33,8 @@ export default function GarageInfoModal({
 }) {
   const [selectedLevelId, setSelectedLevelId] = useState(null);
   const [spotPickerVisible, setSpotPickerVisible] = useState(false);
+  const [occupancyUpdatedAt, setOccupancyUpdatedAt] = useState(null);
+  const [isRefreshingOccupancy, setIsRefreshingOccupancy] = useState(false);
 
   const garageDetails = useMemo(
     () => enrichGarageWithDefaults(garage),
@@ -50,6 +57,49 @@ export default function GarageInfoModal({
     garageDetails && userLocation
       ? `${getDistanceMiles(userLocation, garageDetails).toFixed(1)} mi`
       : 'Unavailable';
+
+  const distanceMiles =
+    garageDetails && userLocation
+      ? getDistanceMiles(userLocation, garageDetails)
+      : null;
+
+  const refreshOccupancy = async () => {
+    if (!garageDetails?.id) {
+      return;
+    }
+
+    setIsRefreshingOccupancy(true);
+
+    try {
+      const response = await getLiveFramePredictions({
+        lotId: garageDetails.id,
+        levelId: selectedLevel?.id,
+      });
+
+      const spotsOpen =
+        response?.empty ??
+        response?.spots_open ??
+        garageDetails.spotsOpen;
+
+      if (spotsOpen != null) {
+        onAvailabilityChange?.(garageDetails.id, spotsOpen);
+      }
+
+      setOccupancyUpdatedAt(Date.now());
+    } catch {
+      // Keep the last known occupancy when live refresh is unavailable.
+    } finally {
+      setIsRefreshingOccupancy(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!visible || !garageDetails?.id) {
+      return;
+    }
+
+    refreshOccupancy();
+  }, [visible, garageDetails?.id, selectedLevel?.id]);
 
   const handleCheckSpots = () => {
     setSpotPickerVisible(true);
@@ -91,6 +141,14 @@ export default function GarageInfoModal({
                 value={garageDetails ? `${garageDetails.rating}` : '-'}
               />
               <InfoRow label="Distance from phone" value={distanceFromPhone} />
+              <InfoRow
+                label="Drive time"
+                value={
+                  distanceMiles != null
+                    ? formatDriveEta(distanceMiles)
+                    : 'Unavailable'
+                }
+              />
               <InfoRow label="Rate/hr" value={garageDetails?.ratePerHour} />
               <InfoRow
                 label="Spots open"
@@ -98,6 +156,14 @@ export default function GarageInfoModal({
                   garageDetails?.spotsOpen == null
                     ? 'Unavailable'
                     : `${garageDetails.spotsOpen}`
+                }
+              />
+              <InfoRow
+                label="Live occupancy"
+                value={
+                  isRefreshingOccupancy
+                    ? 'Refreshing...'
+                    : formatUpdatedAgo(occupancyUpdatedAt)
                 }
               />
               <InfoRow

@@ -50,6 +50,8 @@ export default function FindDrawer({
   onSelectGarage,
   recentlyParkedCar,
   onSelectCar,
+  onNavigateToParkedCar,
+  bestGarage = null,
   savedPlaces = [],
   hasSavedPlaces = false,
   onAddSavedPlaces,
@@ -228,7 +230,16 @@ export default function FindDrawer({
                   <TouchableOpacity
                     style={styles.resultCard}
                     activeOpacity={0.85}
-                    onPress={() => onSelectCar?.(recentlyParkedCar)}
+                    onPress={() => {
+                      if (recentlyParkedCar.parkedLocation) {
+                        onNavigateToParkedCar?.(
+                          recentlyParkedCar.parkedLocation
+                        );
+                        return;
+                      }
+
+                      onSelectCar?.(recentlyParkedCar);
+                    }}
                   >
                     <View style={styles.resultTopRow}>
                       <View style={styles.placeIconWrap}>
@@ -311,7 +322,42 @@ export default function FindDrawer({
                 </>
               )}
 
-              <SectionTitle>5 closest garages</SectionTitle>
+              <SectionTitle>Best garage right now</SectionTitle>
+              {bestGarage ? (
+                <TouchableOpacity
+                  style={[styles.resultCard, styles.bestGarageCard]}
+                  activeOpacity={0.85}
+                  onPress={() => onSelectGarage?.(bestGarage)}
+                >
+                  <View style={styles.resultTopRow}>
+                    <View style={styles.resultTextBlock}>
+                      <Text style={styles.resultName}>{bestGarage.name}</Text>
+                      <Text style={styles.resultAddress}>
+                        {bestGarage.driveEtaLabel}
+                        {bestGarage.spotsOpen != null
+                          ? ` · ${openSpotsText(bestGarage.spotsOpen)}`
+                          : ''}
+                      </Text>
+                    </View>
+                    <Text style={styles.resultDistance}>
+                      {bestGarage.distanceMiles?.toFixed(1) || '--'} mi
+                    </Text>
+                  </View>
+                  <View style={styles.resultStatsInline}>
+                    <Text style={styles.resultMeta}>★ {bestGarage.rating}</Text>
+                    <Text style={styles.resultMeta}>{bestGarage.ratePerHour}</Text>
+                    <Text style={styles.resultMeta}>
+                      {openSpotsText(bestGarage.spotsOpen)}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              ) : (
+                <Text style={styles.emptyResultsText}>
+                  No ranked garages nearby yet.
+                </Text>
+              )}
+
+              <SectionTitle>Nearby garages</SectionTitle>
               {garages.length === 0 ? (
                 <Text style={styles.emptyResultsText}>
                   No garages found nearby.
@@ -346,6 +392,11 @@ export default function FindDrawer({
                       <Text style={styles.resultMeta}>
                         {openSpotsText(spot.spotsOpen)}
                       </Text>
+                      {spot.driveEtaLabel ? (
+                        <Text style={styles.resultMeta}>
+                          {spot.driveEtaLabel}
+                        </Text>
+                      ) : null}
                     </View>
                   </TouchableOpacity>
                 );
@@ -632,6 +683,12 @@ const styles = StyleSheet.create({
 
   resultCardSelected: {
     backgroundColor: '#eceff3',
+  },
+
+  bestGarageCard: {
+    borderWidth: 1,
+    borderColor: '#dbeafe',
+    backgroundColor: '#f8fbff',
   },
 
   resultTopRow: {

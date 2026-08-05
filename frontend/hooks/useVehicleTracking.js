@@ -11,6 +11,7 @@ import {
   applyParkingLotToCar,
   normalizeLotForMatch,
 } from '../utils/parkingLotMatch';
+import { isInsideGarageGeofence } from '../utils/garageGeofence';
 import {
   applyTrackingSample,
   CAR_STATUS,
@@ -27,8 +28,11 @@ import {
   saveTrackedCarId,
 } from '../services/trackingStorage';
 import {
+  endBluetoothSession,
   findCarForBluetoothDevice,
   getConnectedCarBluetoothDeviceName,
+  isBluetoothSessionActive,
+  startBluetoothSession,
   subscribeToBluetoothRouteChanges,
 } from '../services/bluetoothService';
 
@@ -102,6 +106,21 @@ function enrichAllCarsWithParkingLots(cars, lots) {
   });
 }
 
+function buildParkedCarUpdate(car, coordinate, now = Date.now()) {
+  return {
+    ...car,
+    status: CAR_STATUS.PARKED,
+    isCurrentVehicle: true,
+    parkedAt: new Date(now).toISOString(),
+    parkedLocation: coordinate,
+    tripStartedAt: null,
+    tripDistanceMeters: 0,
+    lastKnownSpeedMph: 0,
+    lastLocationSampleAt: new Date(now).toISOString(),
+    parkedSpotPhotoUri: null,
+  };
+}
+
 export default function useVehicleTracking({
   cars,
   setCars,
@@ -111,6 +130,8 @@ export default function useVehicleTracking({
 }) {
   const [trackedCarId, setTrackedCarId] = useState(null);
   const [trackingReady, setTrackingReady] = useState(false);
+  const [trackingAlert, setTrackingAlert] = useState(null);
+  const [pendingParkPhotoCarId, setPendingParkPhotoCarId] = useState(null);
 
   const previousSampleRef = useRef(null);
   const stoppedSinceRef = useRef(null);
@@ -119,6 +140,8 @@ export default function useVehicleTracking({
   const parkingLotsRef = useRef([]);
   const carsRef = useRef(cars);
   const trackedCarIdRef = useRef(trackedCarId);
+  const bluetoothWasConnectedRef = useRef(false);
+  const locationGrantedRef = useRef(true);
 
   useEffect(() => {
     carsRef.current = cars;
@@ -127,6 +150,24 @@ export default function useVehicleTracking({
   useEffect(() => {
     trackedCarIdRef.current = trackedCarId;
   }, [trackedCarId]);
+
+  const refreshTrackingAlert = useCallback(async () => {
+    if (!enabled || !trackedCarIdRef.current) {
+      setTrackingAlert(null);
+      return;
+    }
+
+    if (!locationGrantedRef.current) {
+      setTrackingAlert({
+        type: 'location_denied',
+        message:
+          'Location access is off. Driving and parked status may be unavailable.',
+      });
+      return;
+    }
+
+    setTrackingAlert(null);
+  }, [enabled]);
 
   const persistCarStates = useCallback(async (nextCars, activeTrackedCarId) => {
     const states = nextCars.reduce((accumulator, car) => {
@@ -174,6 +215,21 @@ export default function useVehicleTracking({
     [accessToken]
   );
 
+  const finalizeParkEvent = useCallback(
+    async ({ car }) => {
+      endBluetoothSession();
+      bluetoothWasConnectedRef.current = false;
+      stoppedSinceRef.current = null;
+
+      await persistParkedLocation(car);
+
+      if (!car.parkedSpotPhotoUri) {
+        setPendingParkPhotoCarId(String(car.id));
+      }
+    },
+    [persistParkedLocation]
+  );
+
   const handleLocationSample = useCallback(
     async (location) => {
       if (!trackedCarId) {
@@ -182,6 +238,7 @@ export default function useVehicleTracking({
 
       let historyEntryToAppend = null;
       let carToPersist = null;
+      let parkFinalizePayload = null;
 
       setCars((previousCars) => {
         const trackedCar = previousCars.find(
@@ -192,11 +249,24 @@ export default function useVehicleTracking({
           return previousCars;
         }
 
+        const bluetoothDisconnected =
+          bluetoothWasConnectedRef.current && !isBluetoothSessionActive();
+
+        const coordinate = {
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+        };
+
         const result = applyTrackingSample({
           car: trackedCar,
           location,
           previousSample: previousSampleRef.current,
           stoppedSince: stoppedSinceRef.current,
+          bluetoothDisconnected,
+          insideGarageGeofence: isInsideGarageGeofence(
+            coordinate,
+            parkingLotsRef.current
+          ),
         });
 
         stoppedSinceRef.current = result.stoppedSince;
@@ -205,6 +275,15 @@ export default function useVehicleTracking({
           longitude: location.coords.longitude,
           timestamp: location.timestamp || Date.now(),
         };
+
+        if (
+          result.car.status === CAR_STATUS.PARKING &&
+          result.stoppedSince &&
+          Date.now() - result.stoppedSince >= 5000 &&
+          isBluetoothSessionActive()
+        ) {
+          endBluetoothSession();
+        }
 
         let updatedTrackedCar = result.car;
 
@@ -224,6 +303,9 @@ export default function useVehicleTracking({
           };
 
           carToPersist = updatedTrackedCar;
+          parkFinalizePayload = {
+            car: updatedTrackedCar,
+          };
         }
 
         if (result.justStartedDriving && parkingSessionRef.current?.parkedAt) {
@@ -241,6 +323,10 @@ export default function useVehicleTracking({
             coordinate: trackedCar.parkedLocation,
           };
           parkingSessionRef.current = null;
+          startBluetoothSession(updatedTrackedCar.bluetoothDeviceName);
+          bluetoothWasConnectedRef.current = Boolean(
+            updatedTrackedCar.bluetoothDeviceName
+          );
         }
 
         const nextCars = previousCars.map((car) => {
@@ -260,10 +346,6 @@ export default function useVehicleTracking({
         persistCarStates(nextCars, trackedCarId);
         return nextCars;
       });
-
-      if (carToPersist) {
-        await persistParkedLocation(carToPersist);
-      }
 
       if (historyEntryToAppend) {
         const matchedLot = historyEntryToAppend.car.parkedLotName
@@ -290,11 +372,21 @@ export default function useVehicleTracking({
           })
         );
       }
+
+      if (parkFinalizePayload) {
+        await finalizeParkEvent(parkFinalizePayload);
+      } else if (carToPersist) {
+        await persistParkedLocation(carToPersist);
+      }
+
+      refreshTrackingAlert();
     },
     [
       appendHistoryEntry,
+      finalizeParkEvent,
       persistCarStates,
       persistParkedLocation,
+      refreshTrackingAlert,
       setCars,
       trackedCarId,
     ]
@@ -308,11 +400,15 @@ export default function useVehicleTracking({
     const foregroundPermission =
       await Location.requestForegroundPermissionsAsync();
 
-    if (foregroundPermission.status !== 'granted') {
-      Alert.alert(
-        'Location needed',
-        'Allow location access so IntelliPark can detect when you are driving or parked.'
-      );
+    locationGrantedRef.current =
+      foregroundPermission.status === 'granted';
+
+    if (!locationGrantedRef.current) {
+      setTrackingAlert({
+        type: 'location_denied',
+        message:
+          'Location access is off. Driving and parked status may be unavailable.',
+      });
       return undefined;
     }
 
@@ -331,11 +427,13 @@ export default function useVehicleTracking({
       }
     );
 
+    refreshTrackingAlert();
+
     return () => {
       subscriptionRef.current?.remove?.();
       subscriptionRef.current = null;
     };
-  }, [enabled, handleLocationSample, trackedCarId]);
+  }, [enabled, handleLocationSample, refreshTrackingAlert, trackedCarId]);
 
   useEffect(() => {
     if (!enabled) {
@@ -369,6 +467,15 @@ export default function useVehicleTracking({
           savedTrackedCarId || restoredCars[0]?.id || null;
 
         setTrackedCarId(fallbackTrackedCarId);
+
+        const trackedCar = restoredCars.find(
+          (car) => String(car.id) === String(fallbackTrackedCarId)
+        );
+
+        if (trackedCar?.bluetoothDeviceName) {
+          startBluetoothSession(trackedCar.bluetoothDeviceName);
+          bluetoothWasConnectedRef.current = true;
+        }
 
         return enrichAllCarsWithParkingLots(
           restoredCars.map((car) => {
@@ -417,11 +524,47 @@ export default function useVehicleTracking({
     };
   }, [startTracking, trackedCarId, trackingReady]);
 
+  useEffect(() => {
+    if (!enabled) {
+      return undefined;
+    }
+
+    refreshTrackingAlert();
+
+    const appStateSubscription = AppState.addEventListener(
+      'change',
+      (nextState) => {
+        if (nextState === 'active') {
+          refreshTrackingAlert();
+        }
+      }
+    );
+
+    const intervalId = setInterval(refreshTrackingAlert, 60000);
+
+    return () => {
+      appStateSubscription.remove();
+      clearInterval(intervalId);
+    };
+  }, [enabled, refreshTrackingAlert]);
+
   const trackCar = useCallback(
     async (carId) => {
       const nextTrackedCarId = String(carId);
+      const selectedCar = carsRef.current.find(
+        (car) => String(car.id) === nextTrackedCarId
+      );
+
       setTrackedCarId(nextTrackedCarId);
       await saveTrackedCarId(nextTrackedCarId);
+
+      if (selectedCar?.bluetoothDeviceName) {
+        startBluetoothSession(selectedCar.bluetoothDeviceName);
+        bluetoothWasConnectedRef.current = true;
+      } else {
+        endBluetoothSession();
+        bluetoothWasConnectedRef.current = false;
+      }
 
       setCars((previousCars) =>
         previousCars.map((car) => ({
@@ -433,12 +576,156 @@ export default function useVehicleTracking({
     [setCars]
   );
 
+  const markParkedManually = useCallback(
+    async (carId) => {
+      const targetCarId = String(carId || trackedCarIdRef.current || '');
+
+      if (!targetCarId) {
+        Alert.alert('No vehicle selected', 'Choose a car to mark as parked.');
+        return;
+      }
+
+      const permission = await Location.requestForegroundPermissionsAsync();
+
+      if (permission.status !== 'granted') {
+        Alert.alert(
+          'Location needed',
+          'Allow location access to save where you parked.'
+        );
+        return;
+      }
+
+      let coordinate = null;
+
+      try {
+        const location = await Location.getCurrentPositionAsync({});
+        coordinate = {
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+        };
+      } catch {
+        Alert.alert(
+          'Location unavailable',
+          'Could not read your current location. Try again in a moment.'
+        );
+        return;
+      }
+
+      let parkFinalizePayload = null;
+
+      setCars((previousCars) => {
+        const trackedCar = previousCars.find(
+          (car) => String(car.id) === targetCarId
+        );
+
+        if (!trackedCar) {
+          return previousCars;
+        }
+
+        const now = Date.now();
+        let updatedCar = buildParkedCarUpdate(trackedCar, coordinate, now);
+        updatedCar = enrichCarWithParkingLot(
+          updatedCar,
+          coordinate,
+          parkingLotsRef.current
+        );
+
+        parkingSessionRef.current = {
+          parkedAt: updatedCar.parkedAt,
+          parkedLotId: updatedCar.parkedLotId,
+          parkedLotName: updatedCar.parkedLotName,
+          parkedLotAddress: updatedCar.parkedLotAddress,
+          parkedLotRate: updatedCar.parkedLotRate,
+        };
+
+        parkFinalizePayload = {
+          car: updatedCar,
+        };
+
+        const nextCars = previousCars.map((car) => {
+          if (String(car.id) !== targetCarId) {
+            return car;
+          }
+
+          return {
+            ...updatedCar,
+            isCurrentVehicle: true,
+          };
+        });
+
+        persistCarStates(nextCars, targetCarId);
+        return nextCars;
+      });
+
+      if (parkFinalizePayload) {
+        await finalizeParkEvent(parkFinalizePayload);
+      }
+    },
+    [finalizeParkEvent, persistCarStates, setCars]
+  );
+
+  const saveParkedSpotPhoto = useCallback(
+    async (carId, photoUri) => {
+      if (!carId || !photoUri) {
+        return;
+      }
+
+      setCars((previousCars) => {
+        const nextCars = previousCars.map((car) =>
+          String(car.id) === String(carId)
+            ? { ...car, parkedSpotPhotoUri: photoUri }
+            : car
+        );
+
+        persistCarStates(nextCars, trackedCarIdRef.current);
+        return nextCars;
+      });
+
+      setPendingParkPhotoCarId(null);
+    },
+    [persistCarStates, setCars]
+  );
+
+  const dismissParkPhotoPrompt = useCallback((carId) => {
+    if (
+      carId &&
+      pendingParkPhotoCarId &&
+      String(carId) !== String(pendingParkPhotoCarId)
+    ) {
+      return;
+    }
+
+    setPendingParkPhotoCarId(null);
+  }, [pendingParkPhotoCarId]);
+
   const syncTrackedCarFromBluetooth = useCallback(async () => {
     const connectedDeviceName = await getConnectedCarBluetoothDeviceName();
 
     if (!connectedDeviceName) {
+      if (
+        bluetoothWasConnectedRef.current &&
+        trackedCarIdRef.current &&
+        stoppedSinceRef.current
+      ) {
+        const trackedCar = carsRef.current.find(
+          (car) => String(car.id) === String(trackedCarIdRef.current)
+        );
+
+        if (trackedCar?.status === CAR_STATUS.PARKING) {
+          try {
+            const location = await Location.getCurrentPositionAsync({});
+            await handleLocationSample(location);
+          } catch {
+            // Ignore one-off location read failures.
+          }
+        }
+      }
+
+      bluetoothWasConnectedRef.current = false;
       return;
     }
+
+    bluetoothWasConnectedRef.current = true;
 
     const matchedCar = findCarForBluetoothDevice(
       carsRef.current,
@@ -451,7 +738,7 @@ export default function useVehicleTracking({
     ) {
       await trackCar(matchedCar.id);
     }
-  }, [trackCar]);
+  }, [handleLocationSample, trackCar]);
 
   useEffect(() => {
     if (!enabled || !trackingReady) {
@@ -486,5 +773,10 @@ export default function useVehicleTracking({
     trackedCarId,
     trackCar,
     trackingReady,
+    trackingAlert,
+    pendingParkPhotoCarId,
+    markParkedManually,
+    saveParkedSpotPhoto,
+    dismissParkPhotoPrompt,
   };
 }

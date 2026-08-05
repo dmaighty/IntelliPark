@@ -14,6 +14,7 @@ import { spacing, radius, shadow } from '../../styles/global';
 import { buildRegion } from '../../utils/mapUtils';
 import { getCarDisplayName, getCarStatusLabel } from '../../utils/carUtils';
 import useStatusRefreshTick from '../../hooks/useStatusRefreshTick';
+import TrackingStatusBanner from './TrackingStatusBanner';
 
 export default function MapSection({
   mapRef,
@@ -27,6 +28,8 @@ export default function MapSection({
   onFindPress,
   onFindCarPress,
   onFindUserPress,
+  onNavigateToCarPress,
+  trackingAlert = null,
 }) {
   const markerImage =
     selectedCar?.parkedImage || selectedCar?.image || null;
@@ -35,9 +38,14 @@ export default function MapSection({
     selectedCar?.status === 'parked' && Boolean(selectedCar?.parkedAt)
   );
 
+  const canNavigateToCar =
+    selectedCar?.status === 'parked' && Boolean(selectedCar?.parkedLocation);
+
   return (
     <View style={styles.mapSection}>
       <View style={styles.mapWrap}>
+        <TrackingStatusBanner alert={trackingAlert} />
+
         <MapView
           ref={mapRef}
           style={styles.map}
@@ -127,15 +135,35 @@ export default function MapSection({
             },
           ]}
         >
-          <TouchableOpacity
-            style={styles.findParkingButton}
-            onPress={onFindPress}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.findParkingText}>
-              Find Parking
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.actionBar}>
+            {canNavigateToCar ? (
+              <>
+                <TouchableOpacity
+                  style={styles.actionBarButton}
+                  onPress={onNavigateToCarPress}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons name="walk-outline" size={17} color="#fff" />
+                  <Text style={styles.actionBarText} numberOfLines={1}>
+                    To car
+                  </Text>
+                </TouchableOpacity>
+
+                <View style={styles.actionBarDivider} />
+              </>
+            ) : null}
+
+            <TouchableOpacity
+              style={styles.actionBarButton}
+              onPress={onFindPress}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="search-outline" size={17} color="#fff" />
+              <Text style={styles.actionBarText} numberOfLines={1}>
+                Find Parking
+              </Text>
+            </TouchableOpacity>
+          </View>
         </Animated.View>
       </View>
     </View>
@@ -209,18 +237,34 @@ const styles = StyleSheet.create({
     zIndex: 20,
   },
 
-  findParkingButton: {
+  actionBar: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
     height: 54,
     borderRadius: radius.medium,
     backgroundColor: '#000',
-    alignItems: 'center',
-    justifyContent: 'center',
+    overflow: 'hidden',
     ...shadow.card,
   },
 
-  findParkingText: {
+  actionBarButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+  },
+
+  actionBarDivider: {
+    width: 1,
+    backgroundColor: '#333',
+    marginVertical: 14,
+  },
+
+  actionBarText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '700',
   },
 });

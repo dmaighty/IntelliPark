@@ -13,9 +13,12 @@ export default function CarMenuModal({
   menuCar,
   carName,
   isTracked = false,
+  canNavigateToCar = false,
   onClose,
   onEdit,
   onTrack,
+  onMarkParked,
+  onNavigateToCar,
   onRemove,
 }) {
   const title = carName || menuCar?.title || 'Vehicle';
@@ -42,6 +45,26 @@ export default function CarMenuModal({
                 : 'Drive with this car'}
             </Text>
           </TouchableOpacity>
+
+          {onMarkParked ? (
+            <TouchableOpacity
+              style={styles.menuAction}
+              activeOpacity={0.85}
+              onPress={onMarkParked}
+            >
+              <Text style={styles.menuActionText}>Mark parked here</Text>
+            </TouchableOpacity>
+          ) : null}
+
+          {canNavigateToCar && onNavigateToCar ? (
+            <TouchableOpacity
+              style={styles.menuAction}
+              activeOpacity={0.85}
+              onPress={onNavigateToCar}
+            >
+              <Text style={styles.menuActionText}>Navigate to car</Text>
+            </TouchableOpacity>
+          ) : null}
 
           <TouchableOpacity
             style={styles.menuAction}

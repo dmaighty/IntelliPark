@@ -17,6 +17,12 @@ import {
   getHistoryCarOptions,
   getHistoryLocationDisplay,
 } from '../utils/parkingHistoryUtils';
+import {
+  computeParkingStats,
+  enrichHistoryItemWithSpend,
+  formatCurrency,
+  formatMinutesLabel,
+} from '../utils/parkingSpendUtils';
 
 export default function HistoryScreen({
   history = [],
@@ -42,9 +48,11 @@ export default function HistoryScreen({
       filterHistoryItems(history, {
         query,
         carId: selectedCarId,
-      }),
+      }).map(enrichHistoryItemWithSpend),
     [history, query, selectedCarId]
   );
+
+  const stats = useMemo(() => computeParkingStats(history), [history]);
 
   return (
     <SafeAreaView style={globalStyles.screen}>
@@ -137,6 +145,41 @@ export default function HistoryScreen({
           </Pressable>
         </Modal>
 
+        {history.length > 0 ? (
+          <View style={styles.statsCard}>
+            <Text style={styles.statsTitle}>This month</Text>
+            <View style={styles.statsRow}>
+              <View style={styles.statBlock}>
+                <Text style={styles.statLabel}>Time parked</Text>
+                <Text style={styles.statValue}>
+                  {formatMinutesLabel(stats.monthlyMinutes)}
+                </Text>
+              </View>
+              <View style={styles.statBlock}>
+                <Text style={styles.statLabel}>Estimated spend</Text>
+                <Text style={styles.statValue}>
+                  {formatCurrency(stats.monthlySpend)}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.statsRow}>
+              <View style={styles.statBlock}>
+                <Text style={styles.statLabel}>This week</Text>
+                <Text style={styles.statSubValue}>
+                  {formatMinutesLabel(stats.weeklyMinutes)} ·{' '}
+                  {formatCurrency(stats.weeklySpend)}
+                </Text>
+              </View>
+              <View style={styles.statBlock}>
+                <Text style={styles.statLabel}>Most used garage</Text>
+                <Text style={styles.statSubValue} numberOfLines={1}>
+                  {stats.mostUsedGarage}
+                </Text>
+              </View>
+            </View>
+          </View>
+        ) : null}
+
         <ScrollView
           contentContainerStyle={[
             styles.scrollContent,
@@ -199,9 +242,12 @@ export default function HistoryScreen({
                       {item.date} · {item.startTime}
                       {item.endTime ? ` – ${item.endTime}` : ''}
                     </Text>
-                    {item.rate ? (
-                      <Text style={styles.rateText}>{item.rate}</Text>
-                    ) : null}
+                    <View style={styles.spendBlock}>
+                      {item.rate ? (
+                        <Text style={styles.rateText}>{item.rate}</Text>
+                      ) : null}
+                      <Text style={styles.totalText}>{item.total || '$0.00'}</Text>
+                    </View>
                   </View>
                 </View>
               );
@@ -333,6 +379,51 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
 
+  statsCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    marginBottom: 12,
+    ...shadow.soft,
+  },
+
+  statsTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#111',
+    marginBottom: 10,
+  },
+
+  statsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 8,
+  },
+
+  statBlock: {
+    flex: 1,
+  },
+
+  statLabel: {
+    fontSize: 11,
+    color: '#666',
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+
+  statValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#111',
+  },
+
+  statSubValue: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#333',
+  },
+
   emptyCard: {
     backgroundColor: colors.surface,
     borderRadius: radius.medium,
@@ -441,8 +532,19 @@ const styles = StyleSheet.create({
   },
 
   rateText: {
-    fontSize: 11,
-    color: '#444',
+    fontSize: 10,
+    color: '#666',
+    fontWeight: '600',
+    textAlign: 'right',
+  },
+
+  spendBlock: {
+    alignItems: 'flex-end',
+  },
+
+  totalText: {
+    fontSize: 12,
+    color: '#111',
     fontWeight: '700',
   },
 });

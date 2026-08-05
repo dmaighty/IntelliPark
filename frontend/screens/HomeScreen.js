@@ -26,6 +26,10 @@ import useHomeMap from '../hooks/useHomeMap';
 
 import { DEFAULT_COORDS } from '../utils/mapUtils';
 import { getCarDisplayName } from '../utils/carUtils';
+import { openWalkingDirections } from '../utils/navigationUtils';
+import { pickParkedSpotPhoto } from '../utils/parkedSpotPhoto';
+
+import ParkedPhotoPrompt from '../components/home/ParkedPhotoPrompt';
 
 const { width } = Dimensions.get('window');
 
@@ -36,6 +40,11 @@ export default function HomeScreen({
   cars = [],
   trackedCarId = null,
   onTrackCar,
+  trackingAlert = null,
+  pendingParkPhotoCarId = null,
+  onSaveParkedSpotPhoto,
+  onDismissParkPhotoPrompt,
+  onMarkParkedManually,
   profileImageUrl = null,
   onProfilePress,
   onFindPress,
@@ -195,6 +204,37 @@ export default function HomeScreen({
     }
   };
 
+  const handleNavigateToCar = useCallback(async () => {
+    if (!selectedCar?.parkedLocation) {
+      return;
+    }
+
+    await openWalkingDirections(selectedCar.parkedLocation);
+  }, [selectedCar]);
+
+  const pendingPhotoCar = visibleCars.find(
+    (car) => String(car.id) === String(pendingParkPhotoCarId)
+  );
+
+  const handleTakeParkedPhoto = useCallback(async () => {
+    if (!pendingPhotoCar) {
+      return;
+    }
+
+    const photoUri = await pickParkedSpotPhoto();
+
+    if (photoUri) {
+      onSaveParkedSpotPhoto?.(pendingPhotoCar.id, photoUri);
+      return;
+    }
+
+    onDismissParkPhotoPrompt?.(pendingPhotoCar.id);
+  }, [
+    onDismissParkPhotoPrompt,
+    onSaveParkedSpotPhoto,
+    pendingPhotoCar,
+  ]);
+
   return (
     <SafeAreaView style={globalStyles.screen}>
       <View style={styles.screenContent}>
@@ -230,6 +270,7 @@ export default function HomeScreen({
           firstMapCoordinate={firstMapCoordinate}
           locationGranted={locationGranted}
           selectedCar={selectedCar}
+          trackingAlert={trackingAlert}
           onMapReady={() => setMapReady(true)}
           onRegionChangeComplete={setMapRegion}
           onZoom={handleZoom}
@@ -237,6 +278,7 @@ export default function HomeScreen({
           onFindPress={onFindPress}
           onFindCarPress={handleFindCar}
           onFindUserPress={handleFindUser}
+          onNavigateToCarPress={handleNavigateToCar}
         />
 
         <ChatSheet
@@ -262,6 +304,11 @@ export default function HomeScreen({
           trackedCarId != null &&
           String(menuCar.id) === String(trackedCarId)
         }
+        canNavigateToCar={
+          Boolean(
+            menuCar?.status === 'parked' && menuCar?.parkedLocation
+          )
+        }
         onClose={closeMenu}
         onTrack={() => {
           if (menuCar) {
@@ -269,8 +316,29 @@ export default function HomeScreen({
           }
           closeMenu();
         }}
+        onMarkParked={() => {
+          if (menuCar) {
+            onMarkParkedManually?.(menuCar.id);
+          }
+          closeMenu();
+        }}
+        onNavigateToCar={async () => {
+          if (menuCar?.parkedLocation) {
+            await openWalkingDirections(menuCar.parkedLocation);
+          }
+          closeMenu();
+        }}
         onEdit={handleEditCar}
         onRemove={handleRemoveCar}
+      />
+
+      <ParkedPhotoPrompt
+        visible={Boolean(pendingPhotoCar)}
+        carName={
+          pendingPhotoCar ? getCarDisplayName(pendingPhotoCar) : 'your car'
+        }
+        onTakePhoto={handleTakeParkedPhoto}
+        onSkip={() => onDismissParkPhotoPrompt?.(pendingPhotoCar?.id)}
       />
     </SafeAreaView>
   );

@@ -8,7 +8,12 @@ export const CAR_STATUS = {
 export const TRACKING_CONFIG = {
   DRIVING_SPEED_MPH: 8,
   PARKED_SPEED_MPH: 1,
-  STOP_CONFIRM_MS: 15000,
+  // Must stay at ~0 mph this long before we mark the car as parked.
+  STOP_CONFIRM_MS: 20000,
+  // Faster confirmation when stopped inside a known garage geofence.
+  GARAGE_GEOFENCE_STOP_CONFIRM_MS: 12000,
+  // Faster confirmation when the car Bluetooth session ends at 0 mph.
+  BLUETOOTH_STOP_CONFIRM_MS: 0,
   MIN_DISTANCE_METERS: 10,
   PARKED_GPS_DRIFT_METERS: 40,
 };
@@ -96,12 +101,26 @@ export function nextTrackingState({
   speedMph = 0,
   stoppedSince = null,
   now = Date.now(),
+  stopConfirmMs = TRACKING_CONFIG.STOP_CONFIRM_MS,
+  bluetoothDisconnected = false,
+  insideGarageGeofence = false,
 }) {
-  const { DRIVING_SPEED_MPH, PARKED_SPEED_MPH, STOP_CONFIRM_MS } =
-    TRACKING_CONFIG;
+  const { DRIVING_SPEED_MPH, PARKED_SPEED_MPH } = TRACKING_CONFIG;
+
+  const isDriving = speedMph >= DRIVING_SPEED_MPH;
+  const isStopped = speedMph <= PARKED_SPEED_MPH;
+  const isCrawling = !isDriving && !isStopped;
+
+  let confirmMs = stopConfirmMs;
+
+  if (insideGarageGeofence && isStopped) {
+    confirmMs = TRACKING_CONFIG.GARAGE_GEOFENCE_STOP_CONFIRM_MS;
+  } else if (bluetoothDisconnected && isStopped) {
+    confirmMs = TRACKING_CONFIG.BLUETOOTH_STOP_CONFIRM_MS;
+  }
 
   if (currentStatus === CAR_STATUS.DRIVING) {
-    if (speedMph >= DRIVING_SPEED_MPH) {
+    if (isDriving || isCrawling) {
       return {
         status: CAR_STATUS.DRIVING,
         stoppedSince: null,
@@ -115,14 +134,14 @@ export function nextTrackingState({
   }
 
   if (currentStatus === CAR_STATUS.PARKING) {
-    if (speedMph >= DRIVING_SPEED_MPH) {
+    if (isDriving || isCrawling) {
       return {
         status: CAR_STATUS.DRIVING,
         stoppedSince: null,
       };
     }
 
-    if (stoppedSince && now - stoppedSince >= STOP_CONFIRM_MS) {
+    if (isStopped && stoppedSince && now - stoppedSince >= confirmMs) {
       return {
         status: CAR_STATUS.PARKED,
         stoppedSince: null,
@@ -135,24 +154,36 @@ export function nextTrackingState({
     };
   }
 
-  if (speedMph >= DRIVING_SPEED_MPH) {
-    return {
-      status: CAR_STATUS.DRIVING,
-      stoppedSince: null,
-    };
-  }
+  if (currentStatus === CAR_STATUS.PARKED) {
+    if (isDriving || isCrawling) {
+      return {
+        status: CAR_STATUS.DRIVING,
+        stoppedSince: null,
+      };
+    }
 
-  if (speedMph <= PARKED_SPEED_MPH) {
     return {
       status: CAR_STATUS.PARKED,
       stoppedSince: null,
     };
   }
 
+  if (isDriving || isCrawling) {
+    return {
+      status: CAR_STATUS.DRIVING,
+      stoppedSince: null,
+    };
+  }
+
+  if (isStopped) {
+    return {
+      status: CAR_STATUS.PARKING,
+      stoppedSince: stoppedSince || now,
+    };
+  }
+
   return {
-    status: currentStatus === CAR_STATUS.UNKNOWN
-      ? CAR_STATUS.PARKED
-      : currentStatus,
+    status: CAR_STATUS.UNKNOWN,
     stoppedSince: null,
   };
 }
@@ -162,6 +193,8 @@ export function applyTrackingSample({
   location,
   previousSample,
   stoppedSince = null,
+  bluetoothDisconnected = false,
+  insideGarageGeofence = false,
 }) {
   const speedMph = resolveSpeedMph(location, previousSample);
   const now = location.timestamp || Date.now();
@@ -191,6 +224,8 @@ export function applyTrackingSample({
     speedMph: effectiveSpeedMph,
     stoppedSince,
     now,
+    bluetoothDisconnected,
+    insideGarageGeofence,
   });
 
   let nextCar = {
