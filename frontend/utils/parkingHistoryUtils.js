@@ -1,4 +1,5 @@
 import { getCarDisplayName } from './carUtils';
+import { formatSpendLabel } from './parkingSpendUtils';
 
 export function formatDurationBetween(startIso, endIso = new Date().toISOString()) {
   const start = new Date(startIso).getTime();
@@ -233,6 +234,7 @@ export function buildParkingHistoryEntry({
 }) {
   const duration = formatDurationBetween(parkedAt, endedAt);
   const location = resolveHistoryLocation({ car, parkingLot, address });
+  const total = formatSpendLabel(location.rate, parkedAt, endedAt);
 
   return {
     id: `${car.id}-${endedAt}`,
@@ -251,7 +253,7 @@ export function buildParkingHistoryEntry({
     endTime: formatHistoryTime(endedAt),
     duration,
     rate: location.rate,
-    total: '',
+    total,
     parkedAt,
     endedAt,
     latitude: car.parkedLocation?.latitude ?? null,
@@ -283,7 +285,7 @@ export function buildActiveParkingEntry({ car }) {
     endTime: 'In progress',
     duration: formatDurationBetween(car.parkedAt),
     rate: location.rate,
-    total: '',
+    total: formatSpendLabel(location.rate, car.parkedAt),
     parkedAt: car.parkedAt,
     endedAt: null,
     isActive: true,

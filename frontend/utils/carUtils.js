@@ -161,7 +161,7 @@ export const getCarStatusLabel = (
   }
 
   if (status === 'parking') {
-    return 'Parking detected';
+    return 'Stopped • confirming park';
   }
 
   if (status === 'parked') {

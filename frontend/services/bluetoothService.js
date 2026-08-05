@@ -1,5 +1,18 @@
 import { Platform } from 'react-native';
 
+let activeSessionDeviceName = null;
+const routeListeners = new Set();
+
+function notifyRouteListeners() {
+  routeListeners.forEach((callback) => {
+    try {
+      callback(activeSessionDeviceName);
+    } catch {
+      // Ignore listener failures.
+    }
+  });
+}
+
 export async function requestBluetoothPermissions() {
   if (Platform.OS === 'web') {
     return false;
@@ -45,12 +58,39 @@ export function findCarForBluetoothDevice(cars, deviceName) {
   return null;
 }
 
-export async function getConnectedCarBluetoothDeviceName() {
-  return null;
+export function startBluetoothSession(deviceName) {
+  activeSessionDeviceName = String(deviceName || '').trim() || null;
+  notifyRouteListeners();
 }
 
-export function subscribeToBluetoothRouteChanges(_callback) {
-  return () => {};
+export function endBluetoothSession() {
+  if (!activeSessionDeviceName) {
+    return false;
+  }
+
+  activeSessionDeviceName = null;
+  notifyRouteListeners();
+  return true;
+}
+
+export function isBluetoothSessionActive() {
+  return Boolean(activeSessionDeviceName);
+}
+
+export async function getConnectedCarBluetoothDeviceName() {
+  return activeSessionDeviceName;
+}
+
+export function subscribeToBluetoothRouteChanges(callback) {
+  if (typeof callback !== 'function') {
+    return () => {};
+  }
+
+  routeListeners.add(callback);
+
+  return () => {
+    routeListeners.delete(callback);
+  };
 }
 
 export async function getSuggestedBluetoothDeviceName() {
@@ -58,7 +98,11 @@ export async function getSuggestedBluetoothDeviceName() {
 }
 
 export function isBluetoothConnected(deviceName) {
-  return Boolean(deviceName);
+  if (!deviceName) {
+    return false;
+  }
+
+  return bluetoothNamesMatch(deviceName, activeSessionDeviceName);
 }
 
 export function getBluetoothStatusLabel(deviceName, isDriving) {
