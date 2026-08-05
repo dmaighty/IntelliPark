@@ -288,10 +288,6 @@ export default function FindScreen({
     return sortGaragesByDistance(referencePoint, garages);
   }, [referencePoint, garages]);
 
-  const nearbyGarages = useMemo(() => {
-    return sortedGarages.slice(0, 5);
-  }, [sortedGarages]);
-
   useEffect(() => {
     if (hasAutoFocusedRef.current || !mapReady || !userLocation) {
       return;
@@ -314,18 +310,18 @@ export default function FindScreen({
   }, [focusOnUserLocation, garages, mapReady, userLocation]);
 
   const selectedGarage =
-    nearbyGarages.find((spot) => spot.id === selectedSpotId) ||
-    nearbyGarages[0] ||
+    sortedGarages.find((spot) => spot.id === selectedSpotId) ||
+    sortedGarages[0] ||
     null;
 
   useEffect(() => {
     if (
-      nearbyGarages.length > 0 &&
-      !nearbyGarages.some((garage) => garage.id === selectedSpotId)
+      sortedGarages.length > 0 &&
+      !sortedGarages.some((garage) => garage.id === selectedSpotId)
     ) {
-      setSelectedSpotId(nearbyGarages[0].id);
+      setSelectedSpotId(sortedGarages[0].id);
     }
-  }, [nearbyGarages, selectedSpotId]);
+  }, [sortedGarages, selectedSpotId]);
 
   const focusMapOnCoordinate = useCallback((coordinate) => {
     if (!coordinate || !mapRef.current) {
@@ -603,7 +599,7 @@ export default function FindScreen({
           selectedCarId={selectedCarId}
           searchPlaces={mapSearchPlaces}
           selectedPlaceId={selectedPlace?.id}
-          garages={nearbyGarages}
+          garages={sortedGarages}
           selectedSpotId={selectedSpotId}
           onSelectGarage={focusGarage}
           onSelectCar={focusCar}
@@ -630,7 +626,7 @@ export default function FindScreen({
           }
           onMoreInfo={setInfoGarage}
           onMorePlaceInfo={setInfoPlace}
-          garages={nearbyGarages}
+          garages={sortedGarages}
           selectedSpotId={selectedSpotId}
           onSelectGarage={focusGarage}
           recentlyParkedCar={recentlyParkedCar}
