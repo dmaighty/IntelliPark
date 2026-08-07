@@ -180,21 +180,29 @@ export default function ChatScreen({
       let userPlace = null;
       let locationFallback = null;
 
-      if (locationGranted) {
-        try {
+      try {
+        // Check fresh rather than trusting the mount-time `locationGranted` state,
+        // which can still be stale (e.g. sendOnMount fires before the async
+        // permission check/request resolves).
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        console.log('[ChatScreen] location permission status:', status);
+        if (status === 'granted') {
+          setLocationGranted(true);
           const loc = await Location.getCurrentPositionAsync({});
           const { latitude, longitude } = loc.coords;
+          console.log('[ChatScreen] raw device coords:', latitude, longitude, 'accuracy:', loc.coords.accuracy);
+          // Always send raw coordinates: the backend's nearby-parking tools
+          // need them regardless of whether reverse geocoding succeeds.
+          locationFallback = {
+            latitude,
+            longitude,
+            accuracy: loc.coords.accuracy ?? undefined,
+          };
           userPlace = await coordsToUserPlace(latitude, longitude);
-          if (!userPlace) {
-            locationFallback = {
-              latitude,
-              longitude,
-              accuracy: loc.coords.accuracy ?? undefined,
-            };
-          }
-        } catch {
-          /* no location context */
+          console.log('[ChatScreen] reverse-geocoded place:', JSON.stringify(userPlace));
         }
+      } catch (locError) {
+        console.log('[ChatScreen] location error:', locError?.message || locError);
       }
 
       const history = nextMessages.slice(0, -1).map((item) => ({
@@ -232,7 +240,6 @@ export default function ChatScreen({
     images,
     isSending,
     messages,
-    locationGranted,
   ]);
 
   useEffect(() => {

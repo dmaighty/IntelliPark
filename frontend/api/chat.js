@@ -46,7 +46,11 @@ export async function sendParkingChat({
     if (typeof userPlace.country === 'string' && userPlace.country.trim()) {
       payload.user_place.country = userPlace.country.trim();
     }
-  } else if (
+  }
+
+  // Sent independently of user_place: the backend's nearby-parking tools need
+  // real coordinates, not just a city label.
+  if (
     userLocation &&
     typeof userLocation.latitude === 'number' &&
     typeof userLocation.longitude === 'number'
